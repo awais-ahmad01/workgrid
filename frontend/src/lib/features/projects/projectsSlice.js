@@ -248,19 +248,33 @@ const projectsSlice = createSlice({
   initialState: {
     list: [],
     members: [],
-    loading: false
+    loading: false,
+    activeProjectId: null
   },
-  reducers: {},
+  reducers: {
+    setActiveProject: (state, action) => {
+      state.activeProjectId = action.payload
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchProjects.fulfilled, (s, a) => {
         s.list = a.payload
+
+        // Auto-select first project if none selected
+        if (!s.activeProjectId && a.payload?.length) {
+          s.activeProjectId = a.payload[0].id
+        }
       })
       .addCase(createProject.fulfilled, (s, a) => {
         s.list.push(a.payload)
+        s.activeProjectId = a.payload.id
       })
       .addCase(deleteProject.fulfilled, (s, a) => {
         s.list = s.list.filter(p => p.id !== a.payload)
+        if (s.activeProjectId === a.payload) {
+          s.activeProjectId = s.list[0]?.id || null
+        }
       })
       .addCase(fetchProjectMembers.fulfilled, (s, a) => {
         s.members = a.payload
@@ -268,4 +282,6 @@ const projectsSlice = createSlice({
   }
 })
 
+export const { setActiveProject } = projectsSlice.actions
 export default projectsSlice.reducer
+

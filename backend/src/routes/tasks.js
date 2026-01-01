@@ -8,16 +8,17 @@ import {
   getTaskActivityHandler,
   deleteTaskHandler,
 } from "../controllers/tasksController.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
 // All task routes require authentication
-router.post("/", requireAuth, createTaskHandler);
-router.get("/", requireAuth, listTasksHandler);
+router.post("/", authMiddleware, createTaskHandler);
+router.get("/", authMiddleware, listTasksHandler);
 // More specific routes first
-router.get("/:id/activity", requireAuth, getTaskActivityHandler);
-router.get("/:id", requireAuth, getTaskHandler);
-router.patch("/:id", requireAuth, updateTaskHandler);
-router.delete("/:id", requireAuth, deleteTaskHandler);
+router.get("/:id/activity", authMiddleware, getTaskActivityHandler);
+router.get("/:id", authMiddleware, getTaskHandler);
+router.patch("/:id", authMiddleware, updateTaskHandler);
+router.delete("/:id", authMiddleware, deleteTaskHandler);
 
 export default router;

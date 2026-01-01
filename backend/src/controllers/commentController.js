@@ -14,6 +14,7 @@ function extractMentions(body) {
 export async function postComment(req, res) {
   try {
     const actor = req.user;
+    console.log("postComment actor:", actor);
     const taskId = req.params.id;
     const { body } = req.body;
 
@@ -24,7 +25,7 @@ export async function postComment(req, res) {
     const task = await getTaskById(taskId);
     if (!task) return errorResponse(res, 404, "NOT_FOUND", "Task not found");
 
-    if (!canViewTask(actor.role, task, actor.id)) {
+    if (!canViewTask(actor.role, task, actor.userId)) {
       return errorResponse(res, 403, "FORBIDDEN", "You cannot comment on this task");
     }
 
@@ -38,12 +39,12 @@ export async function postComment(req, res) {
       // - email username (before @)
       // - name with spaces removed
       const sql = `
-        SELECT id, name, email
-        FROM "user"
-        WHERE lower(name) = ANY($1)
-           OR lower(split_part(name, ' ', 1)) = ANY($1)
+        SELECT id, full_name, email
+        FROM "users"
+        WHERE lower(full_name) = ANY($1)
+           OR lower(split_part(full_name, ' ', 1)) = ANY($1)
            OR lower(split_part(email, '@', 1)) = ANY($1)
-           OR lower(regexp_replace(name, '\\s+', '', 'g')) = ANY($1)
+           OR lower(regexp_replace(full_name, '\\s+', '', 'g')) = ANY($1)
       `;
       const resp = await query(sql, [mentionNames]);
       mentionedUsers = resp.rows || [];
@@ -53,20 +54,20 @@ export async function postComment(req, res) {
 
     const comment = await createComment({
       taskId,
-      userId: actor.id,
+      userId: actor.userId,
       body,
       mentions: mentionIds,
     });
 
     // Notify mentioned users (no self, no duplicate comment notification)
     for (const mu of mentionedUsers) {
-      if (String(mu.id) === String(actor.id)) continue; // don't notify self
+      if (String(mu.id) === String(actor.userId)) continue; // don't notify self
       await createNotification({
         userId: mu.id,
         type: "MENTION",
         taskId,
         commentId: comment.id,
-        meta: { mentions: mentionNames, author: { id: actor.id, name: actor.name }, taskTitle: task.title },
+        meta: { mentions: mentionNames, author: { id: actor.userId, name: actor.name }, taskTitle: task.title },
       }).catch(() => {});
     }
 
@@ -86,7 +87,7 @@ export async function getComments(req, res) {
 
     const task = await getTaskById(taskId);
     if (!task) return errorResponse(res, 404, "NOT_FOUND", "Task not found");
-    if (!canViewTask(actor.role, task, actor.id)) {
+    if (!canViewTask(actor.role, task, actor.userId)) {
       return errorResponse(res, 403, "FORBIDDEN", "You cannot view comments for this task");
     }
 

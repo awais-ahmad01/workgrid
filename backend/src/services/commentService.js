@@ -43,9 +43,10 @@ export async function listComments({ taskId, limit = 20, offset = 0 }) {
   
   // Fetch all users at once
   const placeholders = userIds.map((_, i) => `$${i + 1}`).join(',');
-  const usersSql = `SELECT id, name FROM "user" WHERE id IN (${placeholders})`;
+  const usersSql = `SELECT id, full_name FROM "users" WHERE id IN (${placeholders})`;
   const usersResult = await query(usersSql, userIds);
-  const userMap = new Map(usersResult.rows.map(u => [u.id, u.name]));
+  console.log("Fetched users for comments:", usersResult.rows);
+  const userMap = new Map(usersResult.rows.map(u => [u.id, u.full_name]));
   
   // Attach user names to comments
   return comments.map(c => ({

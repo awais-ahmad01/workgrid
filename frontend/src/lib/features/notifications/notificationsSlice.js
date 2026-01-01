@@ -47,7 +47,7 @@ const apiFetch = async (url, options = {}) => {
 // Async Thunks
 export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',
-  async ({ limit = 20, offset = 0 }, { getState, rejectWithValue }) => {
+  async ({ limit = 20, offset = 0 }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('auth_token')
       if (!token) {
@@ -58,6 +58,8 @@ export const fetchNotifications = createAsyncThunk(
         `${API_BASE}/notifications?limit=${limit}&offset=${offset}`,
         { token }
       )
+
+      console.log("Fetched notifications data:", data);
       
       return data.data?.notifications || []
     } catch (error) {
@@ -68,7 +70,7 @@ export const fetchNotifications = createAsyncThunk(
 
 export const markNotificationRead = createAsyncThunk(
   'notifications/markNotificationRead',
-  async (id, { getState, rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('auth_token')
       if (!token) {
@@ -92,7 +94,7 @@ export const markNotificationRead = createAsyncThunk(
 
 export const markAllNotificationsRead = createAsyncThunk(
   'notifications/markAllNotificationsRead',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('auth_token')
       if (!token) {

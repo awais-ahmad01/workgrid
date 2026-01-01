@@ -28,9 +28,10 @@ import { errorResponse } from "../utils/responses.js";
  */
 export async function createTaskHandler(req, res) {
   const actor = req.user;
+  console.log("createTaskHandler invoked by user:", actor);
   const body = req.body;
 
-  console.log("createTaskHandler invoked by user:", actor.id, "with body:", body);
+  console.log("createTaskHandler invoked by user:", actor.userId,actor.role, "with body:", body);
 
   if (!canCreateTask(actor.role)) {
     return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to create tasks");
@@ -51,11 +52,11 @@ export async function createTaskHandler(req, res) {
       title: body.title,
       description: body.description || null,
       assigneeId: body.assigneeId || null,
-      createdBy: actor.id,
+      projectId: body.projectId,
+      createdBy: actor.userId,
       status: body.status || "Backlog",
       priority: body.priority || "Medium",
       dueDate: body.dueDate || null,
-      projectId: body.projectId || null,
       tags: body.tags || [],
       metadata: body.metadata || {},
     });
@@ -63,7 +64,7 @@ export async function createTaskHandler(req, res) {
     // Log activity: created
     await logActivity({
       taskId: task.id,
-      userId: actor.id,
+      userId: actor.userId,
       action: "created",
       field: null,
       oldValue: null,
@@ -82,16 +83,87 @@ export async function createTaskHandler(req, res) {
  * Query params: assigneeId, status, projectId, createdBy, search, limit, offset
  * Role-aware: high roles see everything; others filtered by their visibility rules
  */
-export async function listTasksHandler(req, res) {
+// export async function listTasksHandler(req, res) {
+//   const actor = req.user;
 
+//   console.log(
+//     "listTasksHandler invoked by user:",
+//     actor.userId,
+//     "with role:",
+//     actor.role
+//   );
+
+//   // ✅ Enforce projectId
+//   const projectId = req.query.projectId;
+
+//   console.log("ProjectId filter:", projectId);
+
+//   if (!projectId) {
+//     return errorResponse(
+//       res,
+//       400,
+//       "INVALID_INPUT",
+//       "projectId query parameter is required"
+//     );
+//   }
+
+//   const filters = {
+//     assigneeId: req.query.assigneeId,
+//     status: req.query.status,
+//     projectId, // ✅ always present now
+//     createdBy: req.query.createdBy,
+//     search: req.query.search,
+//     limit: req.query.limit,
+//     offset: req.query.offset,
+//   };
+
+//   try {
+//     // Role-based restriction
+//     if (
+//       !canViewTask(actor.role, { assignee_id: actor.userId }, actor.userId) &&
+//       !["SUPER_ADMIN", "ADMIN", "HR", "TEAM_LEAD"].includes(actor.role)
+//     ) {
+//       filters.assigneeId = actor.userId;
+//     } else if (["SENIOR_INTERN", "INTERN"].includes(actor.role)) {
+//       filters.assigneeId = actor.userId;
+//     }
+
+//     const tasks = await listTasks(filters);
+
+//     return res.json({ status: "success", tasks });
+//   } catch (err) {
+//     console.error("listTasksHandler error:", err);
+//     return errorResponse(res, 500, "SERVER_ERROR", "Failed to list tasks");
+//   }
+// }
+
+
+export async function listTasksHandler(req, res) {
   const actor = req.user;
 
-  console.log("listTasksHandler invoked by user:", actor.id, "with role:", actor.role);
+  console.log(
+    "listTasksHandler invoked by user:",
+    actor.userId,
+    "role:",
+    actor.role
+  );
 
+  // ✅ projectId is mandatory
+  const projectId = req.query.projectId;
+
+  if (!projectId) {
+    return errorResponse(
+      res,
+      400,
+      "INVALID_INPUT",
+      "projectId query parameter is required"
+    );
+  }
+
+  // Base filters (project-scoped always)
   const filters = {
-    assigneeId: req.query.assigneeId,
+    projectId,
     status: req.query.status,
-    projectId: req.query.projectId,
     createdBy: req.query.createdBy,
     search: req.query.search,
     limit: req.query.limit,
@@ -99,21 +171,34 @@ export async function listTasksHandler(req, res) {
   };
 
   try {
-    // For restricted roles, if no filters provided, return tasks for that user only
-    if (!canViewTask(actor.role, { assignee_id: actor.id }, actor.id) && !["ROLE_SUPER_ADMIN","ROLE_ADMIN","ROLE_HR","ROLE_TEAM_LEAD"].includes(actor.role)) {
-      // If the user is intern or senior intern, only show their own tasks
-      filters.assigneeId = actor.id;
-    } else if (["ROLE_SENIOR_INTERN", "ROLE_INTERN"].includes(actor.role)) {
-      filters.assigneeId = actor.id;
+    const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "HR", "TEAM_LEAD"];
+    const MEMBER_ROLES = ["INTERN", "SENIOR_INTERN"];
+
+    // 🔐 Role-based task visibility
+    if (MEMBER_ROLES.includes(actor.role)) {
+      // Members can ONLY see their assigned tasks
+      filters.assigneeId = actor.userId;
     }
 
+    // Admin / Team Lead → see all tasks of project
+    // (no assigneeId filter applied)
+
     const tasks = await listTasks(filters);
-    return res.json({ status: "success", tasks });
+
+    return res.json({
+      status: "success",
+      projectId,
+      count: tasks.length,
+      tasks,
+    });
   } catch (err) {
     console.error("listTasksHandler error:", err);
     return errorResponse(res, 500, "SERVER_ERROR", "Failed to list tasks");
   }
 }
+
+
+
 
 /**
  * GET /tasks/:id
@@ -122,7 +207,7 @@ export async function getTaskHandler(req, res) {
   const actor = req.user;
   const taskId = req.params.id;
 
-  console.log("getTaskHandler invoked by user:", actor.id, "for taskId:", taskId);
+  console.log("getTaskHandler invoked by user:", actor.userId, "for taskId:", taskId);
 
   try {
     const task = await getTaskById(taskId);
@@ -131,7 +216,7 @@ export async function getTaskHandler(req, res) {
     }
 
     // Check visibility
-    if (!canViewTask(actor.role, task, actor.id)) {
+    if (!canViewTask(actor.role, task, actor.userId)) {
       return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to view this task");
     }
 
@@ -160,7 +245,7 @@ export async function updateTaskHandler(req, res) {
     }
 
     // Check permission to update
-    if (!canUpdateTask(actor.role, task, actor.id)) {
+    if (!canUpdateTask(actor.role, task, actor.userId)) {
       return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to update this task");
     }
 
@@ -169,17 +254,17 @@ export async function updateTaskHandler(req, res) {
 
     // Prepare updates only for allowed fields
     const updates = {};
-    const allowedFields = {
-      title: "title",
-      description: "description",
-      assigneeId: "assignee_id",
-      status: "status",
-      priority: "priority",
-      dueDate: "due_date",
-      projectId: "project_id",
-      tags: "tags",
-      metadata: "metadata",
-    };
+const allowedFields = {
+  title: "title",
+  description: "description",
+  assigneeId: "assignee_id",
+  status: "status",
+  priority: "priority",
+  dueDate: "due_date",
+  projectId: "project_id",   // ✅ project support
+  tags: "tags",
+  metadata: "metadata",
+};
 
     for (const k of Object.keys(body || {})) {
       if (k in allowedFields) {
@@ -204,7 +289,7 @@ export async function updateTaskHandler(req, res) {
 
       await logActivity({
         taskId,
-        userId: actor.id,
+        userId: actor.userId,
         action: "updated",
         field: fieldKey,
         oldValue: oldVal === null ? null : String(oldVal),
@@ -234,7 +319,7 @@ export async function getTaskActivityHandler(req, res) {
     }
 
     // Check visibility
-    if (!canViewTask(actor.role, task, actor.id)) {
+    if (!canViewTask(actor.role, task, actor.userId)) {
       return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to view activity for this task");
     }
 
@@ -258,7 +343,7 @@ export async function deleteTaskHandler(req, res) {
   const actor = req.user;
   const taskId = req.params.id;
 
-  console.log("deleteTaskHandler invoked by user:", actor.id, "for taskId:", taskId);
+  console.log("deleteTaskHandler invoked by user:", actor.userId, "for taskId:", taskId);
 
   try {
     const task = await getTaskById(taskId);
@@ -267,14 +352,14 @@ export async function deleteTaskHandler(req, res) {
     }
 
     // Check permission to delete
-    if (!canDeleteTask(actor.role, task, actor.id)) {
+    if (!canDeleteTask(actor.role, task, actor.userId)) {
       return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to delete this task");
     }
 
     // Log activity before deletion
     await logActivity({
       taskId: task.id,
-      userId: actor.id,
+      userId: actor.userId,
       action: "deleted",
       field: null,
       oldValue: JSON.stringify(task),

@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { requireAuth } from "../middlewares/auth.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { getNotifications, markRead, markAllReadController } from "../controllers/notificationController.js";
 
 const router = Router();
 
-router.get("/", requireAuth, getNotifications);
-router.post("/:id/read", requireAuth, markRead);
-router.post("/read-all", requireAuth, markAllReadController);
+router.get("/", authMiddleware, getNotifications);
+router.post("/:id/read", authMiddleware, markRead);
+router.post("/read-all", authMiddleware, markAllReadController);
 
 export default router;
 

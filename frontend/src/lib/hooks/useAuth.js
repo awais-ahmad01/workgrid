@@ -110,8 +110,8 @@ export function useAuth() {
    */
  const signupAdmin = async (data) => {
   const res = await dispatch(signupAdminAction(data))
-  return signupAdminAction.fulfilled.match(res)
-    ? { success: true }
+  return signupAdminAction.fulfilled.match(res)    // dispatch(signupAdminAction(data) - return an action object , like {type: 'auth/signupAdmin/fulfilled', payload: ...}, so redux toolkit provide .match() to match the result is fulfilled or rejected, 
+    ? { success: true }      // this success true or false is used to make it simple for compnents to know that the api call is successful or not and hide the complexity of redux.
     : { success: false, error: res.payload }
 }
 

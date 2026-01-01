@@ -227,7 +227,8 @@ import TaskCalendar from './taskCalender'
 import CreateTaskModal from './createTaskModal'
 import { useTasks } from '@/lib/hooks/useTasks' 
 import { useAuth } from '@/lib/hooks/useAuth' 
-import EditTaskModal from './editTaskModal'
+import EditTaskModal from './editTaskModal';
+import { useProjects } from '@/lib/hooks/useProjects'
 
 
 export default function TasksPage() {
@@ -239,6 +240,9 @@ export default function TasksPage() {
     assigneeId: '',
     search: ''
   })
+
+    const { activeProject, fetchProjectMembers } = useProjects()
+
   
   // Use Redux hooks
   const { tasks, loading, getTasks, createNewTask, updateExistingTask, deleteExistingTask } = useTasks()
@@ -247,9 +251,17 @@ export default function TasksPage() {
   // console.log("Taskss:", tasks);
 
   // Fetch tasks when filters change
-  useEffect(() => {
-    getTasks(filters)
-  }, [filters, getTasks])
+ useEffect(() => {
+  getTasks(filters)
+}, [filters, activeProject?.id])
+
+ // Fetch project members when opening edit modal
+ useEffect(() => {
+    if (editingTask && activeProject?.id) {
+      fetchProjectMembers(activeProject.id)
+    }
+  }, [editingTask, activeProject?.id, fetchProjectMembers])
+
 
   const handleCreateTask = async (taskData) => {
     const result = await createNewTask(taskData)

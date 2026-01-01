@@ -4,7 +4,7 @@ const accessPolicy = {
   SUPER_ADMIN: [ "OVERVIEW",
     "MY_WORK",
     "TASKS",
-    "PROJECTS",
+    // "PROJECTS",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",
@@ -13,7 +13,7 @@ const accessPolicy = {
   ADMIN: [
     "MY_WORK",
     "TASKS",
-    "PROJECTS",
+    // "PROJECTS",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",
@@ -31,7 +31,7 @@ const accessPolicy = {
   TEAM_LEAD: [
     "MY_WORK",
     "TASKS",
-    "PROJECTS",
+    // "PROJECTS",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",
@@ -41,7 +41,7 @@ const accessPolicy = {
   SENIOR_INTERN: [
     "MY_WORK",
     "TASKS",
-    "PROJECTS",
+    // "PROJECTS",
     "DOCS",
     "FILES",
   ],
@@ -49,7 +49,7 @@ const accessPolicy = {
   INTERN: [
     "MY_WORK",
     "TASKS",
-    "PROJECTS",
+    // "PROJECTS",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",

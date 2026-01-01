@@ -181,6 +181,10 @@
 //   )
 // }
 
+
+
+
+
 "use client";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -197,6 +201,7 @@ import {
   X,
   ChevronLeft,
 } from "lucide-react";
+import Link from "next/link";
 
 // Icon mapping
 const MODULE_ICONS = {
@@ -310,7 +315,7 @@ export default function Sidebar() {
               const Icon = MODULE_ICONS[module];
 
               return (
-                <a
+                <Link
                   key={module}
                   href={MODULE_PATHS[module]}
                   className={`
@@ -340,7 +345,7 @@ export default function Sidebar() {
                   {!isCollapsed && isActive && (
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>
                   )}
-                </a>
+                </Link>
               );
             })}
         </div>

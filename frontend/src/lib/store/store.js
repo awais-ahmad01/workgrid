@@ -8,6 +8,7 @@ import commentsReducer from '../features/comments/commentsSlice' // Add this
 import filesReducer from '../features/files/filesSlice' // Add this
 import projectsReducer from '../features/projects/projectsSlice'
 import organizationReducer from '../features/organization/organizationSlice'
+import docsReducer from '../features/docs/docSlice'
 
 export const makeStore = () => {
   return configureStore({
@@ -16,9 +17,10 @@ export const makeStore = () => {
       projects: projectsReducer,
       organization: organizationReducer,
       notifications: notificationsReducer,
-      tasks: tasksReducer, // Add this
-      comments: commentsReducer, // Add this
-      files: filesReducer, // Add this
+      tasks: tasksReducer, 
+      comments: commentsReducer, 
+      files: filesReducer, 
+      docs: docsReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({

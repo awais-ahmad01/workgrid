@@ -3,7 +3,7 @@ import { listNotifications, markNotificationRead, markAllRead } from "../service
 
 export async function getNotifications(req, res) {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
     const offset = parseInt(req.query.offset, 10) || 0;
     const notifications = await listNotifications({ userId, limit, offset });
@@ -16,7 +16,7 @@ export async function getNotifications(req, res) {
 
 export async function markRead(req, res) {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const notificationId = req.params.id;
     const notification = await markNotificationRead({ notificationId, userId });
     return successResponse(res, { notification });
@@ -28,7 +28,7 @@ export async function markRead(req, res) {
 
 export async function markAllReadController(req, res) {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const updated = await markAllRead({ userId });
     return successResponse(res, { updated });
   } catch (err) {

@@ -7,10 +7,14 @@ import tasksRoutes from "./routes/tasks.js";
 import commentRoutes from "./routes/comments.js";
 import notificationRoutes from "./routes/notifications.js";
 import fileRoutes from "./routes/files.js";
+import projectFileRoutes from "./routes/projectFile.routes.js";
+import docRoutes from "./routes/doc.routes.js";
+import docFileRoutes from "./routes/docFile.routes.js";
 import cors from "cors";
 import authRoutes from './routes/auth.routes.js'
 import projectRoutes from './routes/projects.routes.js'
 import organizationRoutes from './routes/organization.routes.js'
+import overviewRoutes from './routes/overview.routes.js'
 
 const app = express();
 
@@ -24,12 +28,16 @@ app.use(cors({
 app.use('/auth', authRoutes)
 app.use('/api', projectRoutes)
 app.use('/api/organization', organizationRoutes)
+app.use('/api/overview', overviewRoutes)
 // app.use("/auth", authRoutes);
 app.use("/health", healthRoutes);
 app.use("/session", sessionRoutes);
 app.use("/tasks", tasksRoutes);
 app.use("/tasks", commentRoutes);
-app.use("/tasks", fileRoutes);
+app.use("/api/tasks", fileRoutes);
+app.use("/api/projects", projectFileRoutes);
+app.use("/api/docs", docRoutes);
+app.use("/api/docs", docFileRoutes); 
 app.use("/notifications", notificationRoutes);
 
 // Global fallback (404)

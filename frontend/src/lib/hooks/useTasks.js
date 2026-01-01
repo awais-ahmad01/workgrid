@@ -14,9 +14,11 @@ import {
   addTaskLocal,
   removeTaskLocal,
 } from '../features/tasks/tasksSlice'
+import { useProjects } from './useProjects'
 
 export function useTasks() {
   const dispatch = useAppDispatch()
+  const { activeProjectId } = useProjects()
   
   // Select tasks state
   const { 
@@ -37,7 +39,11 @@ export function useTasks() {
 
   // Fetch tasks with filters
   const getTasks = async (filters = {}) => {
-    const result = await dispatch(fetchTasks(filters))
+     if (!activeProjectId) return false
+    const result = await dispatch(fetchTasks({
+      ...filters,
+      projectId: activeProjectId, // ✅ attach active project
+    }))
     console.log("Resulted tasks:", result);
     return fetchTasks.fulfilled.match(result)
   }
@@ -50,7 +56,13 @@ export function useTasks() {
 
   // Create new task
   const createNewTask = async (taskData) => {
-    const result = await dispatch(createTask(taskData))
+     if (!activeProjectId) {
+    return { success: false, error: 'No active project selected' }
+  }
+    const result = await dispatch(createTask({
+      ...taskData,
+      projectId: activeProjectId, // ✅ attach projectId
+    }))
     return {
       success: createTask.fulfilled.match(result),
       task: result.payload,

@@ -8,11 +8,11 @@
  */
 
 export function isHighRole(role) {
-  return ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_HR", "ROLE_TEAM_LEAD"].includes(role);
+  return ["SUPER_ADMIN", "ADMIN", "HR", "TEAM_LEAD"].includes(role);
 }
 
 export function isContributingRole(role) {
-  return ["ROLE_SENIOR_INTERN"].includes(role) || isHighRole(role);
+  return ["SENIOR_INTERN"].includes(role) || isHighRole(role);
 }
 
 export function canCreateTask(role) {
@@ -30,12 +30,12 @@ export function canUpdateTask(role, task, userId) {
   if (isHighRole(role)) return true;
 
   // Senior intern: can update tasks related to them (assignee)
-  if (role === "ROLE_SENIOR_INTERN") {
+  if (role === "SENIOR_INTERN") {
     return task && String(task.assignee_id) === String(userId);
   }
 
   // Intern: only update status of tasks assigned to them
-  if (role === "ROLE_INTERN") {
+  if (role === "INTERN") {
     return task && String(task.assignee_id) === String(userId);
   }
 
@@ -47,12 +47,12 @@ export function canViewTask(role, task, userId) {
   if (isHighRole(role)) return true;
 
   // Senior intern: see tasks assigned to them
-  if (role === "ROLE_SENIOR_INTERN") {
+  if (role === "SENIOR_INTERN") {
     return task && String(task.assignee_id) === String(userId);
   }
 
   // Intern: only see tasks assigned to them
-  if (role === "ROLE_INTERN") {
+  if (role === "INTERN") {
     return task && String(task.assignee_id) === String(userId);
   }
 
@@ -65,7 +65,7 @@ export function canDeleteTask(role, task, userId) {
   if (isHighRole(role)) return true;
 
   // Senior intern: can delete tasks they created or are assigned to
-  if (role === "ROLE_SENIOR_INTERN") {
+  if (role === "SENIOR_INTERN") {
     return task && (
       String(task.created_by) === String(userId) ||
       String(task.assignee_id) === String(userId)

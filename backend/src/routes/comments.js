@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { requireAuth } from "../middlewares/auth.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { postComment, getComments } from "../controllers/commentController.js";
 
 const router = Router();
 
-router.post("/:id/comments", requireAuth, postComment);
-router.get("/:id/comments", requireAuth, getComments);
+router.post("/:id/comments", authMiddleware, postComment);
+router.get("/:id/comments", authMiddleware, getComments);
 
 export default router;
 
