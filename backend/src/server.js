@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.routes.js'
 import projectRoutes from './routes/projects.routes.js'
 import organizationRoutes from './routes/organization.routes.js'
 import overviewRoutes from './routes/overview.routes.js'
+import announcementRoutes from './routes/announcement.routes.js'
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/tasks", fileRoutes);
 app.use("/api/projects", projectFileRoutes);
 app.use("/api/docs", docRoutes);
 app.use("/api/docs", docFileRoutes); 
+app.use("/api/announcements", announcementRoutes);
 app.use("/notifications", notificationRoutes);
 
 // Global fallback (404)

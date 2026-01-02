@@ -19,10 +19,11 @@ export async function createDoc({ projectId, title, content, userId }) {
 }
 
 /* LIST */
+
 export async function listDocs({ projectId }) {
   const { data, error } = await supabase
     .from("project_docs")
-    .select("id, title, updated_at")
+    .select("id, title, content, updated_at, created_at")
     .eq("project_id", projectId)
     .order("updated_at", { ascending: false });
 

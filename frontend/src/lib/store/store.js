@@ -9,6 +9,7 @@ import filesReducer from '../features/files/filesSlice' // Add this
 import projectsReducer from '../features/projects/projectsSlice'
 import organizationReducer from '../features/organization/organizationSlice'
 import docsReducer from '../features/docs/docSlice'
+import announcementsReducer from '../features/announcements/announcementsSlice'
 
 export const makeStore = () => {
   return configureStore({
@@ -21,6 +22,7 @@ export const makeStore = () => {
       comments: commentsReducer, 
       files: filesReducer, 
       docs: docsReducer,
+      announcements: announcementsReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
