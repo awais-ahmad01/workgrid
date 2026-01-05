@@ -179,9 +179,13 @@ import {
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useProjects } from "../../../lib/hooks/useProjects";
 import { useOverview } from "@/lib/hooks/useOverview";
+import { useProgress } from "@/lib/hooks/useProgress";
 
 import InviteMemberModal from "../../components/modals/InviteMemberModal";
 import CreateProjectModal from "../../components/modals/createProjectModal";
+import InternDashboard from "../../components/progress/InternDashboard";
+import TeamLeadOverview from "../../components/progress/TeamLeadOverview";
+import AdminOverview from "../../components/progress/AdminOverview";
 
 /* ======================================================
    Overview Page
@@ -191,10 +195,11 @@ export default function OverviewPage() {
   const { user } = useAuth();
   const { activeProject } = useProjects();
   const { fetchSetupStatus, fetchProjectOverview, loading } = useOverview();
+  const { fetchProgressDashboard, loading: progressLoading } = useProgress();
 
   const [setup, setSetup] = useState(null);
-
   const [overview, setOverview] = useState(null);
+  const [progressData, setProgressData] = useState(null);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
@@ -214,8 +219,11 @@ export default function OverviewPage() {
   useEffect(() => {
     if (activeProject?.id) {
       fetchProjectOverview(activeProject.id).then(setOverview);
+      
+      // Fetch progress/workload data
+      fetchProgressDashboard(activeProject.id).then(setProgressData);
     }
-  }, [activeProject]);
+  }, [activeProject, fetchProjectOverview, fetchProgressDashboard]);
 
   /* ----------------------------------------------------
      First time admin logic
@@ -308,89 +316,119 @@ export default function OverviewPage() {
   /* ======================================================
      NORMAL OVERVIEW (PROJECT BASED)
   ====================================================== */
+  
+  // Determine which view to show based on role
+  const isIntern = user?.role === "INTERN" || user?.role === "SENIOR_INTERN";
+  const isTeamLead = user?.role === "TEAM_LEAD";
+  const isAdmin = ["ADMIN", "SUPER_ADMIN", "HR"].includes(user?.role || "");
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
-          {activeProject.name} Overview
+          {isIntern ? "My Progress" : isTeamLead ? "Team Overview" : `${activeProject.name} Overview`}
         </h1>
         <p className="text-gray-600 text-sm">
-          Project health & activity
+          {isIntern 
+            ? "Your personal dashboard and activity" 
+            : isTeamLead 
+            ? "Team workload and progress tracking"
+            : "High-level activity and engagement metrics"}
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard
-          icon={Users}
-          label="Members"
-          value={overview?.membersCount || 0}
-        />
-
-        <StatCard
-          icon={CheckSquare}
-          label="Tasks"
-          value={overview?.tasks?.total || 0}
-        />
-
-        {["ROLE_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_TEAM_LEAD"].includes(
-          user?.role || ""
-        ) && (
-          <>
-            <StatCard
-              icon={FileText}
-              label="Docs"
-              value={overview?.docsCount || 0}
-            />
-            <StatCard
-              icon={FolderOpen}
-              label="Files"
-              value={overview?.filesCount || 0}
-            />
-            <StatCard
-              icon={Megaphone}
-              label="Announcements"
-              value={overview?.announcementsCount || 0}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Task Summary */}
-      <div className="bg-white border border-gray-100 rounded-xl p-6">
-        <h2 className="font-medium text-gray-900 mb-4">
-          Task Summary
-        </h2>
-
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-          <Summary label="Todo" value={overview?.tasks?.todo || 0} />
-          <Summary label="In Progress" value={overview?.tasks?.in_progress || 0} />
-          <Summary label="Done" value={overview?.tasks?.done || 0} />
-          <Summary label="Overdue" value={overview?.tasks?.overdue || 0} danger />
+      {/* Role-based Progress/Workload View */}
+      {progressLoading ? (
+        <div className="text-center py-12 text-gray-500">
+          Loading progress data...
         </div>
-      </div>
+      ) : (
+        <>
+          {isIntern && <InternDashboard data={progressData} />}
+          {isTeamLead && <TeamLeadOverview data={progressData} />}
+          {isAdmin && <AdminOverview data={progressData} />}
+        </>
+      )}
 
-      {/* Activity */}
-      <div className="bg-white border border-gray-100 rounded-xl">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-medium text-gray-900">
-            Recent Activity
-          </h2>
-        </div>
+      {/* Additional Stats (for non-intern roles) - Use progressData when available */}
+      {/* {!isIntern && (
+        <> */}
+          {/* Stats - Use progressData.projectStats for admin, fallback to overview */}
+          {/* <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <StatCard
+              icon={Users}
+              label="Members"
+              value={isAdmin && progressData?.projectStats?.membersCount !== undefined 
+                ? progressData.projectStats.membersCount 
+                : overview?.membersCount || 0}
+            />
 
-        <div className="p-6">
-          {overview?.recentActivity?.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              No activity yet.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {/* map activity later */}
-            </ul>
-          )}
-        </div>
-      </div>
+            <StatCard
+              icon={CheckSquare}
+              label="Tasks"
+              value={isAdmin && progressData?.projectStats?.totalTasks !== undefined
+                ? progressData.projectStats.totalTasks
+                : overview?.tasks?.total || 0}
+            />
+
+            {isAdmin && (
+              <>
+                <StatCard
+                  icon={FileText}
+                  label="Docs"
+                  value={progressData?.projectStats?.docsCount || 0}
+                />
+                <StatCard
+                  icon={FolderOpen}
+                  label="Files"
+                  value={progressData?.projectStats?.filesCount || 0}
+                />
+                <StatCard
+                  icon={Megaphone}
+                  label="Announcements"
+                  value={progressData?.projectStats?.announcementsCount || 0}
+                />
+              </>
+            )}
+          </div> */}
+
+          {/* Task Summary - Use progressData.projectStats for admin, fallback to overview */}
+          {/* <div className="bg-white border border-gray-100 rounded-xl p-6">
+            <h2 className="font-medium text-gray-900 mb-4">
+              Task Summary
+            </h2>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <Summary 
+                label="Todo" 
+                value={isAdmin && progressData?.projectStats?.todoTasks !== undefined
+                  ? progressData.projectStats.todoTasks
+                  : overview?.tasks?.todo || 0} 
+              />
+              <Summary 
+                label="In Progress" 
+                value={isAdmin && progressData?.projectStats?.inProgressTasks !== undefined
+                  ? progressData.projectStats.inProgressTasks
+                  : overview?.tasks?.in_progress || 0} 
+              />
+              <Summary 
+                label="Done" 
+                value={isAdmin && progressData?.projectStats?.doneTasks !== undefined
+                  ? progressData.projectStats.doneTasks
+                  : overview?.tasks?.done || 0} 
+              />
+              <Summary 
+                label="Overdue" 
+                value={isAdmin && progressData?.projectStats?.overdueTasks !== undefined
+                  ? progressData.projectStats.overdueTasks
+                  : overview?.tasks?.overdue || 0} 
+                danger 
+              />
+            </div>
+          </div> */}
+        {/* </>
+      )} */}
     </div>
   );
 }

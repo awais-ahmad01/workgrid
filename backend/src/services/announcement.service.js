@@ -1,4 +1,64 @@
 import { query } from "../lib/db.js";
+import { createNotification } from "./notificationService.js";
+
+/* -----------------------------------------------------
+   RESOLVE TARGET USERS FROM ANNOUNCEMENT TARGETS
+   Returns array of user IDs that should receive notifications
+----------------------------------------------------- */
+async function resolveTargetUsers({ targets, organizationId, createdBy }) {
+  const targetUserIds = new Set();
+
+  for (const target of targets) {
+    if (target.type === "COMPANY") {
+      // Get all active members in the organization
+      const result = await query(
+        `
+        SELECT u.id
+        FROM users u
+        JOIN organization_members om ON om.user_id::uuid = u.id::uuid
+        WHERE om.organization_id = $1::uuid
+          AND om.status = 'active'
+          AND u.id::uuid != $2::uuid
+        `,
+        [organizationId, createdBy]
+      );
+      result.rows.forEach((row) => targetUserIds.add(row.id));
+    } else if (target.type === "ROLE" && target.id) {
+      // Get all users with the specified role
+      const result = await query(
+        `
+        SELECT u.id
+        FROM users u
+        JOIN organization_members om ON om.user_id::uuid = u.id::uuid
+        WHERE om.organization_id = $1::uuid
+          AND om.status = 'active'
+          AND om.role::text = $2
+          AND u.id::uuid != $3::uuid
+        `,
+        [organizationId, target.id, createdBy]
+      );
+      result.rows.forEach((row) => targetUserIds.add(row.id));
+    } else if (target.type === "PROJECT" && target.id) {
+      // Get all members of the project
+      const result = await query(
+        `
+        SELECT DISTINCT u.id
+        FROM users u
+        JOIN project_members pm ON pm.user_id::uuid = u.id::uuid
+        JOIN organization_members om ON om.user_id::uuid = u.id::uuid
+        WHERE pm.project_id = $1::uuid
+          AND om.organization_id = $2::uuid
+          AND om.status = 'active'
+          AND u.id::uuid != $3::uuid
+        `,
+        [target.id, organizationId, createdBy]
+      );
+      result.rows.forEach((row) => targetUserIds.add(row.id));
+    }
+  }
+
+  return Array.from(targetUserIds);
+}
 
 /* -----------------------------------------------------
    CREATE ANNOUNCEMENT
@@ -10,6 +70,7 @@ export async function createAnnouncement({
   createdBy,
   pinned = false,
   targets = [],
+  organizationId,
 }) {
   const insertAnnouncementSQL = `
     INSERT INTO announcements
@@ -43,6 +104,49 @@ export async function createAnnouncement({
     `;
 
     await query(insertTargetsSQL, values);
+
+    // Create notifications for target users
+    if (organizationId) {
+      try {
+        const targetUserIds = await resolveTargetUsers({
+          targets,
+          organizationId,
+          createdBy,
+        });
+
+        // Get creator's name for notification meta
+        const creatorResult = await query(
+          `SELECT full_name FROM users WHERE id = $1::uuid`,
+          [createdBy]
+        );
+        const creatorName = creatorResult.rows[0]?.full_name || "Someone";
+
+        // Create notifications for each target user
+        for (const userId of targetUserIds) {
+          await createNotification({
+            userId,
+            type: "ANNOUNCEMENT",
+            taskId: null, // Announcements don't have task_id
+            commentId: null,
+            meta: {
+              announcementId: announcement.id,
+              title: announcement.title,
+              category: announcement.category,
+              author: {
+                id: createdBy,
+                name: creatorName,
+              },
+            },
+          }).catch((err) => {
+            // Log error but don't fail announcement creation
+            console.error(`Failed to create notification for user ${userId}:`, err);
+          });
+        }
+      } catch (err) {
+        // Log error but don't fail announcement creation
+        console.error("Failed to create announcement notifications:", err);
+      }
+    }
   }
 
   return announcement;
@@ -132,7 +236,7 @@ export async function markAnnouncementRead({ announcementId, userId }) {
 export async function togglePinAnnouncement({ announcementId, pinned }) {
   const sql = `
     UPDATE announcements
-    SET pinned = $1
+    SET is_pinned = $1
     WHERE id = $2
     RETURNING *;
   `;

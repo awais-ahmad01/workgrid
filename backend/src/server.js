@@ -16,6 +16,7 @@ import projectRoutes from './routes/projects.routes.js'
 import organizationRoutes from './routes/organization.routes.js'
 import overviewRoutes from './routes/overview.routes.js'
 import announcementRoutes from './routes/announcement.routes.js'
+import progressRoutes from './routes/progress.routes.js'
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/auth', authRoutes)
 app.use('/api', projectRoutes)
 app.use('/api/organization', organizationRoutes)
 app.use('/api/overview', overviewRoutes)
+app.use('/api/progress', progressRoutes)
 // app.use("/auth", authRoutes);
 app.use("/health", healthRoutes);
 app.use("/session", sessionRoutes);

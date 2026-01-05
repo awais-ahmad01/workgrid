@@ -1,8 +1,8 @@
 const accessPolicy = {
-  // ROLE_SUPER_ADMIN: ["ALL"],
 
-  SUPER_ADMIN: [ "OVERVIEW",
-    "MY_WORK",
+  SUPER_ADMIN: [ 
+    "OVERVIEW",
+
     "TASKS",
     // "PROJECTS",
     "DOCS",
@@ -11,43 +11,45 @@ const accessPolicy = {
   ],
 
   ADMIN: [
-    "MY_WORK",
+     "OVERVIEW",
     "TASKS",
     // "PROJECTS",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",
-    "OVERVIEW",
   ],
 
   HR: [
-    "MY_WORK",
+   "OVERVIEW",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",
-    "OVERVIEW",
   ],
 
   TEAM_LEAD: [
-    "MY_WORK",
+     "OVERVIEW",
+    // "MY_WORK",
     "TASKS",
     // "PROJECTS",
     "DOCS",
     "FILES",
     "ANNOUNCEMENTS",
-    "OVERVIEW",
+   
   ],
 
   SENIOR_INTERN: [
-    "MY_WORK",
+    "OVERVIEW",
+    // "MY_WORK",
     "TASKS",
+    
     // "PROJECTS",
     "DOCS",
     "FILES",
   ],
 
   INTERN: [
-    "MY_WORK",
+    "OVERVIEW",
+    // "MY_WORK",
     "TASKS",
     // "PROJECTS",
     "DOCS",

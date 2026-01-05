@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase.js";
 
-export async function createNotification({ userId, type, taskId, commentId = null, meta = {} }) {
+export async function createNotification({ userId, type, taskId = null, commentId = null, meta = {} }) {
   const { data, error } = await supabase
     .from("task_notifications")
     .insert({

@@ -25,6 +25,7 @@ export async function createAnnouncementController(req, res) {
     targets,
     pinned,
     createdBy: actor.userId,
+    organizationId: actor.orgId,
   });
 
   return successResponse(res, { announcement }, 201);

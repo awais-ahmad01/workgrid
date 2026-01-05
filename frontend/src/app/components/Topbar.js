@@ -294,7 +294,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, ChevronDown, Settings, User, LogOut, Bell, Check, FolderKanban, Plus } from 'lucide-react'
+import { Search, ChevronDown, Settings, User, LogOut, Bell, Check, FolderKanban, Plus, Megaphone } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import { useProjects } from '@/lib/hooks/useProjects'
@@ -394,6 +394,15 @@ export default function Topbar() {
         if (!n.read_at) {
             await handleMarkRead(n.id)
         }
+        
+        // Handle announcement notifications
+        if (n.type === 'ANNOUNCEMENT' && n.meta?.announcementId) {
+            router.push('/announcements')
+            setIsNotifOpen(false)
+            return
+        }
+        
+        // Handle task-related notifications
         const destTask = n.task_id || n.meta?.taskId
         if (destTask) {
             router.push(`/tasks/${destTask}`)
@@ -576,19 +585,56 @@ const formatRoleName = (role) => {
                                     <button
                                         key={n.id}
                                         onClick={() => handleOpenNotification(n)}
-                                        className={`w-full text-left py-3 px-3 flex items-start gap-2 ${n.read_at ? 'bg-white' : 'bg-indigo-50/60 hover:bg-indigo-100'}`}
+                                        className={`w-full text-left py-3 px-3 flex items-start gap-2 ${
+                                            n.read_at 
+                                                ? 'bg-white' 
+                                                : n.type === 'ANNOUNCEMENT'
+                                                    ? 'bg-yellow-50/60 hover:bg-yellow-100'
+                                                    : 'bg-indigo-50/60 hover:bg-indigo-100'
+                                        }`}
                                     >
                                         <div className="flex-1">
-                                            <div className="text-sm text-gray-800">
-                                                {n.type === 'MENTION' && `${n.meta?.author?.name || 'Someone'} mentioned you`}
-                                                {n.type === 'COMMENT' && `${n.meta?.author?.name || 'Someone'} commented on a task`}
-                                                {!['COMMENT','MENTION'].includes(n.type || '') && (n.type || 'Notification')}
+                                            <div className="flex items-center gap-2 mb-1">
+                                                {n.type === 'ANNOUNCEMENT' && (
+                                                    <Megaphone className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                                                )}
+                                                <div className={`text-sm font-medium ${
+                                                    n.type === 'ANNOUNCEMENT' ? 'text-yellow-900' : 'text-gray-800'
+                                                }`}>
+                                                    {n.type === 'MENTION' && (
+                                                        <>
+                                                            <span className="font-semibold">{n.meta?.author?.name || 'Someone'}</span> mentioned you in a task
+                                                            {n.meta?.taskTitle && <span className="text-gray-500"> on "{n.meta.taskTitle}"</span>}
+                                                        </>
+                                                    )}
+                                                    {n.type === 'ASSIGNMENT' && (
+                                                        <>
+                                                            <span className="font-semibold">{n.meta?.author?.name || 'Someone'}</span> assigned you a task
+                                                            {n.meta?.taskTitle && <span className="text-gray-500"> "{n.meta.taskTitle}"</span>}
+                                                        </>
+                                                    )}
+                                                    {n.type === 'ANNOUNCEMENT' && (
+                                                        <>
+                                                            <span className="font-semibold">{n.meta?.author?.name || 'Someone'}</span> posted a new announcement
+                                                        </>
+                                                    )}
+                                                    {!['MENTION', 'ASSIGNMENT', 'ANNOUNCEMENT'].includes(n.type || '') && (
+                                                        n.type || 'Notification'
+                                                    )}
+                                                </div>
                                             </div>
-                                            {n.meta?.mentions && (
-                                                <div className="text-xs text-gray-500">Mentions: {Array.isArray(n.meta.mentions) ? n.meta.mentions.join(', ') : ''}</div>
+                                            {n.type === 'ANNOUNCEMENT' && n.meta?.title && (
+                                                <div className="text-xs font-medium text-yellow-800 mb-1 truncate">
+                                                    {n.meta.title}
+                                                </div>
                                             )}
-                                            {n.meta?.taskTitle && (
+                                            {n.meta?.taskTitle && n.type !== 'ANNOUNCEMENT' && (
                                                 <div className="text-xs text-gray-500 truncate">{n.meta.taskTitle}</div>
+                                            )}
+                                            {n.meta?.category && n.type === 'ANNOUNCEMENT' && (
+                                                <div className="text-xs text-yellow-600 mt-1">
+                                                    Category: {n.meta.category}
+                                                </div>
                                             )}
                                             <div className="text-xs text-gray-400 mt-1">
                                                 {n.created_at ? new Date(n.created_at).toLocaleString() : ''}
