@@ -448,12 +448,22 @@ export default function TaskList({ tasks, onUpdateTask, onDeleteTask, onEditTask
 
   const canUpdateTask = (task) => {
     if (!task) return false
-    const high = ["SUPER_ADMIN", "ADMIN", "HR", "TEAM_LEAD"].includes(role)
+    // HR cannot update tasks (view-only)
+    if (role === "HR") return false
+    const high = ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD"].includes(role)
     if (high) return true
-    if (role === "SENIOR_INTERN") {
-      return String(task.assignee_id) === String(userId)
-    }
-    if (role === "INTERN") {
+    // Senior Interns and Interns can only update status, not edit details
+    // So they should not see the "Edit Task" option
+    return false
+  }
+
+  // Separate function for status updates (used in status dropdown)
+  const canUpdateTaskStatus = (task) => {
+    if (!task) return false
+    if (role === "HR") return false
+    const high = ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD"].includes(role)
+    if (high) return true
+    if (role === "SENIOR_INTERN" || role === "INTERN") {
       return String(task.assignee_id) === String(userId)
     }
     return false
@@ -461,7 +471,9 @@ export default function TaskList({ tasks, onUpdateTask, onDeleteTask, onEditTask
 
   const canDeleteTask = (task) => {
     if (!task) return false
-    const high = ["SUPER_ADMIN", "ADMIN", "HR", "TEAM_LEAD"].includes(role)
+    // HR cannot delete tasks (view-only)
+    if (role === "HR") return false
+    const high = ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD"].includes(role)
     if (high) return true
     if (role === "SENIOR_INTERN") {
       return String(task.assignee_id) === String(userId) || String(task.created_by) === String(userId)
@@ -546,9 +558,9 @@ export default function TaskList({ tasks, onUpdateTask, onDeleteTask, onEditTask
                       <select
                         value={task.status}
                         onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                        disabled={!canUpdateTask(task)}
+                        disabled={!canUpdateTaskStatus(task)}
                         className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
-                          canUpdateTask(task) 
+                          canUpdateTaskStatus(task) 
                             ? 'cursor-pointer hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500' 
                             : 'opacity-60 cursor-not-allowed bg-gray-50'
                         } ${statusColors[task.status] || 'bg-gray-100 text-gray-700'}`}

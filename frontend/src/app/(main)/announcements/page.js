@@ -346,6 +346,7 @@ export default function AnnouncementsPage() {
                 key={announcement.id}
                 announcement={announcement}
                 canCreate={canCreate}
+                user={user}
                 onMarkAsRead={handleMarkAsRead}
                 onTogglePin={handleTogglePin}
                 onDelete={handleDeleteClick}
@@ -369,6 +370,7 @@ export default function AnnouncementsPage() {
                 key={announcement.id}
                 announcement={announcement}
                 canCreate={canCreate}
+                user={user}
                 onMarkAsRead={handleMarkAsRead}
                 onTogglePin={handleTogglePin}
                 onDelete={handleDeleteClick}
@@ -458,6 +460,7 @@ export default function AnnouncementsPage() {
 function AnnouncementCard({ 
   announcement, 
   canCreate, 
+  user,
   onMarkAsRead, 
   onTogglePin, 
   onDelete, 
@@ -509,29 +512,33 @@ function AnnouncementCard({
             </button>
           )}
 
-          {/* Admin Actions */}
-          {canCreate && (
-            <>
-              <button
-                onClick={(e) => onTogglePin(e, announcement.id, announcement.is_pinned)}
-                className={`p-2 rounded-lg transition-colors ${
-                  announcement.is_pinned
-                    ? 'text-indigo-600 hover:bg-indigo-50'
-                    : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
-                }`}
-                title={announcement.is_pinned ? 'Unpin' : 'Pin'}
-              >
-                <Pin className="w-5 h-5" />
-              </button>
-              <button
-                onClick={(e) => onDelete(e, announcement)}
-                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </>
-          )}
+          {/* Admin Actions - Only creator or high roles can pin/delete */}
+          {(() => {
+            if (!user) return null;
+            const canModify = canCreate || String(announcement.created_by) === String(user.id);
+            return canModify && (
+              <>
+                <button
+                  onClick={(e) => onTogglePin(e, announcement.id, announcement.is_pinned)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    announcement.is_pinned
+                      ? 'text-indigo-600 hover:bg-indigo-50'
+                      : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                  }`}
+                  title={announcement.is_pinned ? 'Unpin' : 'Pin'}
+                >
+                  <Pin className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={(e) => onDelete(e, announcement)}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </>
+            );
+          })()}
         </div>
       </div>
 

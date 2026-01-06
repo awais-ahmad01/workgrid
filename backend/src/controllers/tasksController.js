@@ -9,8 +9,11 @@ import {
   canCreateTask,
   canAssignTask,
   canUpdateTask,
+  canUpdateTaskStatus,
+  canUpdateTaskDetails,
   canViewTask,
   canDeleteTask,
+  isHR,
 } from "../services/permissionService.js";
 import { logActivity } from "../services/activityService.js";
 import { errorResponse } from "../utils/responses.js";
@@ -33,6 +36,7 @@ export async function createTaskHandler(req, res) {
 
   console.log("createTaskHandler invoked by user:", actor.userId,actor.role, "with body:", body);
 
+  // Check if user can create tasks (includes Senior Interns now)
   if (!canCreateTask(actor.role)) {
     return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to create tasks");
   }
@@ -41,9 +45,31 @@ export async function createTaskHandler(req, res) {
     return errorResponse(res, 400, "INVALID_INPUT", "Task title is required");
   }
 
-  // If assignee provided and the actor cannot assign, reject
-  if (body.assigneeId && !canAssignTask(actor.role)) {
-    return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to assign tasks");
+  // If assignee provided, check assignment permissions
+  if (body.assigneeId) {
+    if (!canAssignTask(actor.role, body.assigneeId, actor.userId)) {
+      return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to assign tasks");
+    }
+
+    // For Senior Interns: verify assignee is an intern
+    if (actor.role === "SENIOR_INTERN") {
+      const { query } = await import("../lib/db.js");
+      const assigneeCheck = await query(
+        `SELECT om.role FROM organization_members om 
+         WHERE om.user_id = $1 AND om.organization_id = $2 AND om.status = 'active'`,
+        [body.assigneeId, actor.orgId]
+      );
+      
+      if (assigneeCheck.rows.length === 0) {
+        return errorResponse(res, 404, "NOT_FOUND", "Assignee not found in organization");
+      }
+
+      const assigneeRole = assigneeCheck.rows[0].role;
+      // Senior Interns can only assign to Interns
+      if (assigneeRole !== "INTERN") {
+        return errorResponse(res, 403, "FORBIDDEN", "You can only assign tasks to Interns");
+      }
+    }
   }
 
   try {
@@ -171,7 +197,7 @@ export async function listTasksHandler(req, res) {
   };
 
   try {
-    const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "HR", "TEAM_LEAD"];
+    const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD"];
     const MEMBER_ROLES = ["INTERN", "SENIOR_INTERN"];
 
     // 🔐 Role-based task visibility
@@ -179,9 +205,9 @@ export async function listTasksHandler(req, res) {
       // Members can ONLY see their assigned tasks
       filters.assigneeId = actor.userId;
     }
-
+    // HR can see all tasks (for monitoring intern activity)
     // Admin / Team Lead → see all tasks of project
-    // (no assigneeId filter applied)
+    // (no assigneeId filter applied for HR, ADMIN, TEAM_LEAD)
 
     const tasks = await listTasks(filters);
 
@@ -244,9 +270,47 @@ export async function updateTaskHandler(req, res) {
       return errorResponse(res, 404, "NOT_FOUND", "Task not found");
     }
 
-    // Check permission to update
-    if (!canUpdateTask(actor.role, task, actor.userId)) {
-      return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to update this task");
+    // Determine which fields are being updated
+    const detailFields = ["title", "description", "assigneeId", "priority", "dueDate", "projectId", "tags", "metadata"];
+    const statusField = "status";
+    
+    const updatingStatus = body.hasOwnProperty(statusField);
+    const updatingDetails = detailFields.some(field => body.hasOwnProperty(field));
+
+    // Check permissions based on what's being updated
+    if (updatingDetails && !canUpdateTaskDetails(actor.role, task, actor.userId)) {
+      return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to update task details");
+    }
+
+    if (updatingStatus && !canUpdateTaskStatus(actor.role, task, actor.userId)) {
+      return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to update task status");
+    }
+
+    // If updating assignee, check assignment permissions
+    if (body.assigneeId && body.assigneeId !== task.assignee_id) {
+      if (!canAssignTask(actor.role, body.assigneeId, actor.userId)) {
+        return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to assign tasks");
+      }
+
+      // For Senior Interns: verify assignee is an intern
+      if (actor.role === "SENIOR_INTERN") {
+        const { query } = await import("../lib/db.js");
+        const assigneeCheck = await query(
+          `SELECT om.role FROM organization_members om 
+           WHERE om.user_id = $1 AND om.organization_id = $2 AND om.status = 'active'`,
+          [body.assigneeId, actor.orgId]
+        );
+        
+        if (assigneeCheck.rows.length === 0) {
+          return errorResponse(res, 404, "NOT_FOUND", "Assignee not found in organization");
+        }
+
+        const assigneeRole = assigneeCheck.rows[0].role;
+        // Senior Interns can only assign to Interns
+        if (assigneeRole !== "INTERN") {
+          return errorResponse(res, 403, "FORBIDDEN", "You can only assign tasks to Interns");
+        }
+      }
     }
 
     // Determine changes for activity logs
@@ -254,17 +318,17 @@ export async function updateTaskHandler(req, res) {
 
     // Prepare updates only for allowed fields
     const updates = {};
-const allowedFields = {
-  title: "title",
-  description: "description",
-  assigneeId: "assignee_id",
-  status: "status",
-  priority: "priority",
-  dueDate: "due_date",
-  projectId: "project_id",   // ✅ project support
-  tags: "tags",
-  metadata: "metadata",
-};
+    const allowedFields = {
+      title: "title",
+      description: "description",
+      assigneeId: "assignee_id",
+      status: "status",
+      priority: "priority",
+      dueDate: "due_date",
+      projectId: "project_id",   // ✅ project support
+      tags: "tags",
+      metadata: "metadata",
+    };
 
     for (const k of Object.keys(body || {})) {
       if (k in allowedFields) {

@@ -250,10 +250,20 @@ export default function CreateTaskModal({ onSubmit, onClose }) {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // Filter members to exclude the current user if needed
-  const filteredMembers = projectMembers.filter(member => 
-    member.id !== user?.id // Optional: exclude current user
-  )
+  // Filter members based on role:
+  // - Senior Interns can only assign to Interns
+  // - High roles can assign to anyone
+  const filteredMembers = projectMembers.filter(member => {
+    if (member.id === user?.id) return false; // Exclude current user
+    
+    // If user is Senior Intern, only show Interns
+    if (user?.role === 'SENIOR_INTERN') {
+      return member.role === 'INTERN';
+    }
+    
+    // High roles can see all members
+    return true;
+  })
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

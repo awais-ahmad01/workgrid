@@ -45,6 +45,7 @@ const accessPolicy = {
     // "PROJECTS",
     "DOCS",
     "FILES",
+    "ANNOUNCEMENTS",
   ],
 
   INTERN: [

@@ -69,17 +69,22 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocs } from "@/lib/hooks/useDocs";
 import { useProjects } from "@/lib/hooks/useProjects";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { FileText, Clock, Loader2 } from "lucide-react";
 import DocsHeader from "./header";
 
 export default function DocsPage() {
   const { activeProject } = useProjects();
   const projectId = activeProject?.id;
+  const { user } = useAuth();
 
   const router = useRouter();
   const { list: docs, loading, getDocs, createNewDoc } = useDocs();
   const [searchQuery, setSearchQuery] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Check if user can create docs (Interns cannot)
+  const canCreateDoc = ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD', 'SENIOR_INTERN'].includes(user?.role);
 
   useEffect(() => {
     if (projectId) {
@@ -233,7 +238,7 @@ export default function DocsPage() {
         onSearchChange={setSearchQuery}
         onCreateClick={handleCreate}
         creating={creating}
-        canCreate={!!projectId}
+        canCreate={!!projectId && canCreateDoc}
       />
 
       <div className="px-6 md:px-10 lg:px-12 pb-8 space-y-4">

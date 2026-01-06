@@ -28,12 +28,14 @@ const [draggedTask, setDraggedTask] = useState(null)
 
   const canUpdateTask = (task) => {
     if (!task) return false
-    const high = ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_HR", "ROLE_TEAM_LEAD"].includes(role)
+    // HR cannot update tasks (view-only)
+    if (role === "HR" || role === "ROLE_HR") return false
+    const high = ["SUPER_ADMIN", "ADMIN", "TEAM_LEAD", "ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_TEAM_LEAD"].includes(role)
     if (high) return true
-    if (role === "ROLE_SENIOR_INTERN") {
+    if (role === "SENIOR_INTERN" || role === "ROLE_SENIOR_INTERN") {
       return String(task.assignee_id) === String(userId)
     }
-    if (role === "ROLE_INTERN") {
+    if (role === "INTERN" || role === "ROLE_INTERN") {
       return String(task.assignee_id) === String(userId)
     }
     return false

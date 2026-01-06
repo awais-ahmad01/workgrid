@@ -129,14 +129,16 @@
 
 
 
-import { successResponse } from "../utils/responses.js";
+import { successResponse, errorResponse } from "../utils/responses.js";
 import {
   createUploadUrl,
   confirmFile,
   listTaskFiles,
   deleteFile,
+  getFileById,
 } from "../services/fileService.js";
 import { getTaskById } from "../services/taskService.js";
+import { canDeleteFile } from "../services/permissionService.js";
 
 export async function taskFileHandshake(req, res) {
   const task = await getTaskById(req.params.taskId);
@@ -169,8 +171,28 @@ export async function getTaskFiles(req, res) {
 }
 
 export async function deleteTaskFile(req, res) {
-  const deleted = await deleteFile({ fileId: req.params.fileId });
-  return successResponse(res, { deleted });
+  const actor = req.user;
+  const fileId = req.params.fileId;
+
+  try {
+    // Get the file first to check permissions
+    const file = await getFileById(fileId);
+    if (!file) {
+      return errorResponse(res, 404, "NOT_FOUND", "File not found");
+    }
+
+    // Check permission to delete
+    // Note: file.user_id is the field that stores who uploaded the file
+    if (!canDeleteFile(actor.role, file, actor.userId)) {
+      return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to delete this file");
+    }
+
+    const deleted = await deleteFile({ fileId });
+    return successResponse(res, { deleted });
+  } catch (err) {
+    console.error("deleteTaskFile error:", err);
+    return errorResponse(res, 500, "SERVER_ERROR", err.message || "Failed to delete file");
+  }
 }
 
 

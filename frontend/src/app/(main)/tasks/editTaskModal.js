@@ -413,7 +413,14 @@ export default function EditTaskModal({ task, onSubmit, onClose }) {
                 <option value="">Unassigned</option>
                 <option value={user?.id}>Assign to myself</option>
                 {projectMembers
-                  .filter(member => member.id !== user?.id)
+                  .filter(member => {
+                    if (member.id === user?.id) return false;
+                    // If user is Senior Intern, only show Interns
+                    if (user?.role === 'SENIOR_INTERN') {
+                      return member.role === 'INTERN';
+                    }
+                    return true;
+                  })
                   .map(member => (
                     <option key={member.id} value={member.id}>
                       {member.full_name} 

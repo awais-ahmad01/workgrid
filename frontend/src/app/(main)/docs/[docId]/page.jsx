@@ -374,6 +374,7 @@ import {
 } from "lucide-react";
 import { useDocs } from "@/lib/hooks/useDocs";
 import { useFiles } from "@/lib/hooks/useFiles";
+import { useAuth } from "@/lib/hooks/useAuth";
 import dynamic from "next/dynamic";
 
 // Dynamically import ReactQuill to avoid SSR issues
@@ -383,6 +384,7 @@ import "react-quill-new/dist/quill.snow.css";
 export default function DocEditorPage() {
   const { docId } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
 
   const {
     current,
@@ -394,6 +396,25 @@ export default function DocEditorPage() {
   } = useDocs();
 
   const { getFilesByDoc, uploadFileToDoc, getDocFiles, removeDocFile, uploading: filesUploading } = useFiles();
+
+  // Permission checks
+  const canUpdateDoc = current && (
+    ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role) ||
+    (user?.role === 'SENIOR_INTERN' && String(current.created_by) === String(user?.id))
+  );
+
+  const canDeleteDoc = current && (
+    ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role) ||
+    (user?.role === 'SENIOR_INTERN' && String(current.created_by) === String(user?.id))
+  );
+
+  const canUploadFile = ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD', 'SENIOR_INTERN'].includes(user?.role);
+
+  const canDeleteFile = (file) => {
+    if (!file) return false;
+    return ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role) ||
+           (user?.role === 'SENIOR_INTERN' && String(file.user_id) === String(user?.id));
+  };
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -530,12 +551,14 @@ export default function DocEditorPage() {
   );
 
   const handleTitleChange = (e) => {
+    if (!canUpdateDoc) return; // Prevent editing if no permission
     const newTitle = e.target.value;
     setTitle(newTitle);
     debouncedSave(newTitle, content);
   };
 
   const handleContentChange = (value) => {
+    if (!canUpdateDoc) return; // Prevent editing if no permission
     setContent(value);
     debouncedSave(title, value);
   };
@@ -734,14 +757,16 @@ export default function DocEditorPage() {
                 )}
               </div>
 
-              {/* Delete Button */}
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
+              {/* Delete Button - Only show if user can delete */}
+              {canDeleteDoc && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              )}
             </div>
           </div>
 
@@ -751,21 +776,37 @@ export default function DocEditorPage() {
             value={title}
             onChange={handleTitleChange}
             placeholder="Untitled Document"
-            className="w-full text-3xl font-bold text-gray-900 bg-transparent border-none focus:outline-none placeholder-gray-300"
+            disabled={!canUpdateDoc}
+            className={`w-full text-3xl font-bold text-gray-900 bg-transparent border-none focus:outline-none placeholder-gray-300 ${
+              !canUpdateDoc ? 'cursor-not-allowed opacity-60' : ''
+            }`}
           />
         </div>
 
         {/* Rich Text Editor */}
         <div className="bg-white rounded-lg shadow-sm border text-black border-gray-200 mb-6 quill-editor-container">
-          <ReactQuill
-            ref={quillRef}
-            theme="snow"
-            value={content}
-            onChange={handleContentChange}
-            modules={modules}
-            formats={formats}
-            placeholder="Start typing your document..."
-          />
+          {canUpdateDoc ? (
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              value={content}
+              onChange={handleContentChange}
+              modules={modules}
+              formats={formats}
+              placeholder="Start typing your document..."
+            />
+          ) : (
+            <div 
+              className="ql-container ql-snow"
+              style={{ border: 'none', fontSize: '16px', fontFamily: 'inherit' }}
+            >
+              <div 
+                className="ql-editor" 
+                style={{ minHeight: '500px', padding: '24px' }}
+                dangerouslySetInnerHTML={{ __html: content }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Attachments */}
@@ -773,25 +814,28 @@ export default function DocEditorPage() {
           <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Attachments</h3>
 
-            <label className="inline-flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors disabled:opacity-50">
-              {uploadProgress || filesUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Paperclip className="w-4 h-4" />
-                  Add File
-                </>
-              )}
-              <input
-                type="file"
-                hidden
-                onChange={handleUpload}
-                disabled={uploadProgress || filesUploading}
-              />
-            </label>
+            {/* Only show upload button if user can upload files */}
+            {canUploadFile && (
+              <label className="inline-flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors disabled:opacity-50">
+                {uploadProgress || filesUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="w-4 h-4" />
+                    Add File
+                  </>
+                )}
+                <input
+                  type="file"
+                  hidden
+                  onChange={handleUpload}
+                  disabled={uploadProgress || filesUploading}
+                />
+              </label>
+            )}
           </div>
 
           <div className="p-6">
@@ -832,12 +876,15 @@ export default function DocEditorPage() {
                         Open
                       </a>
 
-                      <button
-                        onClick={() => handleDeleteFileClick(f)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* Only show delete button if user can delete this file */}
+                      {canDeleteFile(f) && (
+                        <button
+                          onClick={() => handleDeleteFileClick(f)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

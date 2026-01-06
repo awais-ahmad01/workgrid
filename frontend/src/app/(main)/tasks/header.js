@@ -219,7 +219,8 @@ export default function TasksHeader({ onViewChange, onFilterChange, onCreateClic
   const [searchTerm, setSearchTerm] = useState('')
   const { user } = useAuth() // Changed from useRole
 
-  const canCreateTask = ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role)
+  // HR cannot create tasks (view-only), Senior Interns can create
+  const canCreateTask = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'SENIOR_INTERN'].includes(user?.role)
 
   const handleViewChange = (view) => {
     setActiveView(view)

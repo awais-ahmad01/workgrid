@@ -1,11 +1,13 @@
-import { successResponse } from "../utils/responses.js";
+import { successResponse, errorResponse } from "../utils/responses.js";
 import {
   createAnnouncement,
   listAnnouncementsForUser,
   markAnnouncementRead,
   deleteAnnouncement,
   togglePinAnnouncement,
+  getAnnouncementById,
 } from "../services/announcement.service.js";
+import { isHighRole, isHR } from "../services/permissionService.js";
 
 /* CREATE */
 export async function createAnnouncementController(req, res) {
@@ -85,10 +87,27 @@ export async function markRead(req, res) {
 
 /* PIN */
 export async function pinAnnouncement(req, res) {
+  const actor = req.user;
+  const announcementId = req.params.id;
   const { pinned } = req.body;
 
+  // Get announcement to check permissions
+  const announcement = await getAnnouncementById(announcementId);
+  if (!announcement) {
+    return errorResponse(res, 404, "NOT_FOUND", "Announcement not found");
+  }
+
+  // Only creator or high roles (ADMIN, SUPER_ADMIN) can pin/unpin
+  const canPin = isHighRole(actor.role) || 
+                 isHR(actor.role) || 
+                 String(announcement.created_by) === String(actor.userId);
+
+  if (!canPin) {
+    return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to pin/unpin this announcement");
+  }
+
   const updated = await togglePinAnnouncement({
-    announcementId: req.params.id,
+    announcementId,
     pinned,
   });
 
@@ -97,8 +116,26 @@ export async function pinAnnouncement(req, res) {
 
 /* DELETE */
 export async function deleteAnnouncementController(req, res) {
+  const actor = req.user;
+  const announcementId = req.params.id;
+
+  // Get announcement to check permissions
+  const announcement = await getAnnouncementById(announcementId);
+  if (!announcement) {
+    return errorResponse(res, 404, "NOT_FOUND", "Announcement not found");
+  }
+
+  // Only creator or high roles (ADMIN, SUPER_ADMIN) can delete
+  const canDelete = isHighRole(actor.role) || 
+                    isHR(actor.role) || 
+                    String(announcement.created_by) === String(actor.userId);
+
+  if (!canDelete) {
+    return errorResponse(res, 403, "FORBIDDEN", "You are not allowed to delete this announcement");
+  }
+
   const deleted = await deleteAnnouncement({
-    announcementId: req.params.id,
+    announcementId,
   });
 
   return successResponse(res, { deleted });

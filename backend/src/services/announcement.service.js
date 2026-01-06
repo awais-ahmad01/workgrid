@@ -216,6 +216,18 @@ export async function listAnnouncementsForUser({
 }
 
 /* -----------------------------------------------------
+   GET ANNOUNCEMENT BY ID
+----------------------------------------------------- */
+export async function getAnnouncementById(announcementId) {
+  const sql = `
+    SELECT * FROM announcements
+    WHERE id = $1;
+  `;
+  const res = await query(sql, [announcementId]);
+  return res.rows[0] || null;
+}
+
+/* -----------------------------------------------------
    MARK ANNOUNCEMENT AS READ
 ----------------------------------------------------- */
 export async function markAnnouncementRead({ announcementId, userId }) {

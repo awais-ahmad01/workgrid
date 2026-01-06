@@ -109,9 +109,11 @@ import { useEffect, useState } from 'react'
 import { Paperclip, Trash2, Download, Loader2, FileText, Upload, AlertCircle } from 'lucide-react'
 import { useFiles } from '@/lib/hooks/useFiles'
 import { useProjects } from '@/lib/hooks/useProjects'
+import { useAuth } from '@/lib/hooks/useAuth'
 import FilesHeader from './header'
 
 export default function ProjectFilesPage() {
+  const { user } = useAuth()
   const { activeProject } = useProjects()
   const {
     getProjectFiles,
@@ -310,12 +312,16 @@ export default function ProjectFilesPage() {
                         <Download className="w-4 h-4" />
                         Download
                       </a>
-                      <button
-                        onClick={() => setDeleteConfirm(file)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* Only high roles, HR, or file owner (Senior Intern) can delete */}
+                      {(['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role) || 
+                        (user?.role === 'SENIOR_INTERN' && String(file.user_id) === String(user?.id))) && (
+                        <button
+                          onClick={() => setDeleteConfirm(file)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -327,7 +333,10 @@ export default function ProjectFilesPage() {
     )
   }
 
-  const uploadButton = (
+  // Check if user can upload files (Interns cannot upload)
+  const canUploadFile = ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD', 'SENIOR_INTERN'].includes(user?.role);
+
+  const uploadButton = canUploadFile ? (
     <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
       {uploadProgress ? (
         <>
@@ -347,7 +356,7 @@ export default function ProjectFilesPage() {
         disabled={uploading || uploadProgress || !activeProject?.id}
       />
     </label>
-  )
+  ) : null
 
   return (
     <div className="flex flex-col gap-6">

@@ -122,15 +122,17 @@ export default function ProjectDetailsPage() {
             </div>
           </div>
 
-          {/* Right: Add Members Button */}
-          <button
-            onClick={() => setAddOpen(true)}
-            disabled={loading}
-            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add Members</span>
-          </button>
+          {/* Right: Add Members Button - Only visible to Team Leads, Admins, and HR */}
+          {['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role) && (
+            <button
+              onClick={() => setAddOpen(true)}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Add Members</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -226,23 +228,26 @@ export default function ProjectDetailsPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <button
-                              onClick={() => handleRemoveMember(m.id)}
-                              disabled={removing === m.id}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {removing === m.id ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Removing...
-                                </>
-                              ) : (
-                                <>
-                                  <Trash2 className="w-4 h-4" />
-                                  Remove
-                                </>
-                              )}
-                            </button>
+                            {/* Only Team Leads, Admins, and HR can remove members */}
+                            {['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role) && (
+                              <button
+                                onClick={() => handleRemoveMember(m.id)}
+                                disabled={removing === m.id}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {removing === m.id ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Removing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Trash2 className="w-4 h-4" />
+                                    Remove
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}

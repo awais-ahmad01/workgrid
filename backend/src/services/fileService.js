@@ -278,6 +278,18 @@ export async function listTaskFiles({ taskId }) {
   return data;
 }
 
+/* ---------------- GET BY ID ---------------- */
+export async function getFileById(fileId) {
+  const { data, error } = await supabase
+    .from("project_files")
+    .select("*")
+    .eq("id", fileId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 /* ---------------- DELETE ---------------- */
 export async function deleteFile({ fileId }) {
   const { data: file } = await supabase
