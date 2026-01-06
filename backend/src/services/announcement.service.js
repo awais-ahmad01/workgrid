@@ -56,7 +56,6 @@ async function resolveTargetUsers({ targets, organizationId, createdBy }) {
       result.rows.forEach((row) => targetUserIds.add(row.id));
     }
   }
-
   return Array.from(targetUserIds);
 }
 
@@ -257,4 +256,5 @@ export async function deleteAnnouncement({ announcementId }) {
 
   const res = await query(sql, [announcementId]);
   return res.rows[0];
+  
 }

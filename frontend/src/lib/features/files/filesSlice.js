@@ -531,6 +531,26 @@ export const uploadDocFile = createAsyncThunk(
   }
 )
 
+/**
+ * Delete DOC-LEVEL file
+ */
+export const deleteDocFile = createAsyncThunk(
+  'files/deleteDocFile',
+  async ({ projectId, docId, fileId }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('auth_token')
+
+      const url = `${API_BASE}/docs/docs/files/${fileId}`
+
+      await apiFetch(url, { method: 'DELETE', token })
+
+      return { docId, fileId }
+    } catch (err) {
+      return rejectWithValue(err.message)
+    }
+  }
+)
+
 
 /**
  * Delete file (project or task)
@@ -616,17 +636,19 @@ const filesSlice = createSlice({
       })
 
       /* LIST DOC */
-.addCase(listDocFiles.fulfilled, (state, action) => {
-  state.docFiles[action.payload.docId] = action.payload.files
-})
+      .addCase(listDocFiles.fulfilled, (state, action) => {
+        state.docFiles[action.payload.docId] = action.payload.files
+      })
 
-/* UPLOAD DOC */
-.addCase(uploadDocFile.fulfilled, (state, action) => {
-  state.docFiles[action.payload.docId]?.unshift(action.payload.file)
-})
+      /* UPLOAD DOC */
+      .addCase(uploadDocFile.fulfilled, (state, action) => {
+        if (!state.docFiles[action.payload.docId]) {
+          state.docFiles[action.payload.docId] = []
+        }
+        state.docFiles[action.payload.docId].unshift(action.payload.file)
+      })
 
-
-      /* DELETE */
+      /* DELETE (project/task) */
       .addCase(deleteFile.fulfilled, (state, action) => {
         const { projectId, taskId, fileId } = action.payload
 
@@ -638,6 +660,15 @@ const filesSlice = createSlice({
         if (taskId) {
           state.taskFiles[taskId] =
             state.taskFiles[taskId]?.filter(f => f.id !== fileId)
+        }
+      })
+
+      /* DELETE DOC FILE */
+      .addCase(deleteDocFile.fulfilled, (state, action) => {
+        const { docId, fileId } = action.payload
+        if (state.docFiles[docId]) {
+          state.docFiles[docId] =
+            state.docFiles[docId].filter(f => f.id !== fileId)
         }
       })
   },

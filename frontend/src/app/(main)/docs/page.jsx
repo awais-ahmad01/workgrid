@@ -66,10 +66,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useDocs } from "@/lib/hooks/useDocs";
 import { useProjects } from "@/lib/hooks/useProjects";
-import { FileText, Plus, Search, Clock, Loader2 } from "lucide-react";
+import { FileText, Clock, Loader2 } from "lucide-react";
+import DocsHeader from "./header";
 
 export default function DocsPage() {
   const { activeProject } = useProjects();
@@ -84,7 +85,7 @@ export default function DocsPage() {
     if (projectId) {
       getDocs(projectId);
     }
-  }, [projectId]);
+  }, [projectId, getDocs]);
 
   const handleCreate = async () => {
     if (!projectId || creating) return;
@@ -130,128 +131,116 @@ export default function DocsPage() {
     }
   };
 
-  const getContentPreview = (content) => {
-    if (!content) return "No content";
-    if (typeof content === "string") {
-      const trimmed = content.trim();
-      if (!trimmed) return "Empty document";
-      // Truncate to 100 characters and add ellipsis if longer
-      return trimmed.length > 100 ? trimmed.slice(0, 100) + "..." : trimmed;
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-10">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+            <span>Loading documents...</span>
+          </div>
+        </div>
+      );
     }
-    return "Empty document";
-  };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Create and manage your project documentation
-              </p>
-            </div>
+    if (filteredDocs.length === 0) {
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {searchQuery ? "No documents found" : "No documents yet"}
+          </h3>
+          <p className="text-gray-500 mb-6">
+            {searchQuery
+              ? "Try adjusting your search query"
+              : "Create your first document to get started"}
+          </p>
+          {!searchQuery && (
             <button
               onClick={handleCreate}
               disabled={creating || !projectId}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {creating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  New Document
-                </>
-              )}
+              <span>Create Document</span>
             </button>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
+          )}
         </div>
+      );
+    }
 
-        {/* Documents Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-          </div>
-        ) : filteredDocs.length === 0 ? (
-          <div className="text-center py-20">
-            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchQuery ? "No documents found" : "No documents yet"}
-            </h3>
-            <p className="text-gray-500 mb-6">
-              {searchQuery
-                ? "Try adjusting your search query"
-                : "Create your first document to get started"}
-            </p>
-            {!searchQuery && (
-              <button
-                onClick={handleCreate}
-                disabled={creating || !projectId}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-4 h-4" />
-                Create Document
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDocs.map((doc) => (
-              <div
-                key={doc.id}
-                onClick={() => router.push(`/docs/${doc.id}`)}
-                className="group bg-white rounded-lg border border-gray-200 p-6 cursor-pointer hover:shadow-lg hover:border-indigo-300 transition-all duration-200"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
-                      <FileText className="w-5 h-5 text-indigo-600" />
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Title
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Updated
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredDocs.map((doc) => (
+                <tr
+                  key={doc.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate max-w-md">
+                          {doc.title || "Untitled Document"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate mb-2 group-hover:text-indigo-600 transition-colors">
-                      {doc.title || "Untitled Document"}
-                    </h3>
-                    {/* <p
-                      className="text-sm text-gray-500 mb-3 overflow-hidden"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        lineHeight: "1.5rem",
-                        maxHeight: "3rem",
-                      }}
-                    >
-                      {getContentPreview(doc.content)}
-                    </p> */}
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <Clock className="w-3.5 h-3.5" />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Clock className="w-4 h-4" />
                       <span>Updated {formatDate(doc.updated_at)}</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button
+                      onClick={() => router.push(`/docs/${doc.id}`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    >
+                      <span>Open</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <DocsHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onCreateClick={handleCreate}
+        creating={creating}
+        canCreate={!!projectId}
+      />
+
+      <div className="px-6 md:px-10 lg:px-12 pb-8 space-y-4">
+        <p className="text-sm text-gray-600">
+          Create and manage your project documentation
+        </p>
+        {renderContent()}
       </div>
     </div>
   );

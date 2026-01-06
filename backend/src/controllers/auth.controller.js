@@ -202,6 +202,43 @@ export async function sendInvite(req, res) {
       });
     }
 
+    // Check if email already exists in users table
+    const existingUser = await query(
+      `SELECT u.id, u.email, om.organization_id, om.status
+       FROM users u
+       LEFT JOIN organization_members om ON om.user_id = u.id
+       WHERE u.email = $1`,
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      const user = existingUser.rows[0];
+      // Check if user is already in this organization
+      if (user.organization_id === orgId) {
+        return res.status(400).json({
+          message: "This email is already a member of your organization",
+        });
+      }
+      // User exists but in different organization
+      return res.status(400).json({
+        message: "This email is already registered with another organization",
+      });
+    }
+
+    // Check if there's already a pending invite for this email in this organization
+    const existingInvite = await query(
+      `SELECT id, email, status, created_at
+       FROM organization_invites
+       WHERE organization_id = $1 AND email = $2 AND status = 'pending'`,
+      [orgId, email]
+    );
+
+    if (existingInvite.rows.length > 0) {
+      return res.status(400).json({
+        message: "An invitation has already been sent to this email address",
+      });
+    }
+
     const token = uuid();
 
     await query(
@@ -225,8 +262,16 @@ export async function sendInvite(req, res) {
     });
   } catch (err) {
     console.error("SEND INVITE ERROR:", err);
+    
+    // Handle unique constraint violations (if any)
+    if (err.code === '23505') { // PostgreSQL unique violation
+      return res.status(400).json({
+        message: "An invitation has already been sent to this email address",
+      });
+    }
+    
     return res.status(500).json({
-      message: "Failed to send invitation",
+      message: "Failed to send invitation. Please try again later.",
     });
   }
 }

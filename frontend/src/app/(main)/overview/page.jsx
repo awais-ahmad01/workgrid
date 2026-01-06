@@ -174,6 +174,7 @@ import {
   Megaphone,
   Plus,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -186,6 +187,7 @@ import CreateProjectModal from "../../components/modals/createProjectModal";
 import InternDashboard from "../../components/progress/InternDashboard";
 import TeamLeadOverview from "../../components/progress/TeamLeadOverview";
 import AdminOverview from "../../components/progress/AdminOverview";
+import OverviewHeader from "./header";
 
 /* ======================================================
    Overview Page
@@ -322,34 +324,38 @@ export default function OverviewPage() {
   const isTeamLead = user?.role === "TEAM_LEAD";
   const isAdmin = ["ADMIN", "SUPER_ADMIN", "HR"].includes(user?.role || "");
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          {isIntern ? "My Progress" : isTeamLead ? "Team Overview" : `${activeProject.name} Overview`}
-        </h1>
-        <p className="text-gray-600 text-sm">
-          {isIntern 
-            ? "Your personal dashboard and activity" 
-            : isTeamLead 
-            ? "Team workload and progress tracking"
-            : "High-level activity and engagement metrics"}
-        </p>
-      </div>
+  const headerTitle = isIntern
+    ? "My Progress"
+    : isTeamLead
+    ? "Team Overview"
+    : `${activeProject.name} Overview`;
 
-      {/* Role-based Progress/Workload View */}
-      {progressLoading ? (
-        <div className="text-center py-12 text-gray-500">
-          Loading progress data...
-        </div>
-      ) : (
-        <>
-          {isIntern && <InternDashboard data={progressData} />}
-          {isTeamLead && <TeamLeadOverview data={progressData} />}
-          {isAdmin && <AdminOverview data={progressData} />}
-        </>
-      )}
+  const headerSubtitle = isIntern
+    ? "Your personal dashboard and activity"
+    : isTeamLead
+    ? "Team workload and progress tracking"
+    : "High-level activity and engagement metrics";
+
+  return (
+    <div className="flex flex-col gap-6">
+      <OverviewHeader title={headerTitle} subtitle={headerSubtitle} />
+
+      <div className="px-6 md:px-10 lg:px-12 pb-8 space-y-6">
+        {/* Role-based Progress/Workload View */}
+        {progressLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+              <span>Loading progress data...</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {isIntern && <InternDashboard data={progressData} />}
+            {isTeamLead && <TeamLeadOverview data={progressData} />}
+            {isAdmin && <AdminOverview data={progressData} />}
+          </>
+        )}
 
       {/* Additional Stats (for non-intern roles) - Use progressData when available */}
       {/* {!isIntern && (
@@ -429,6 +435,7 @@ export default function OverviewPage() {
           </div> */}
         {/* </>
       )} */}
+    </div>
     </div>
   );
 }

@@ -386,22 +386,23 @@ export default function DocEditorPage() {
 
   const {
     current,
-    uploading,
     updating,
     getDoc,
     updateDocContent,
     removeDoc,
-    removeDocFile,
     clearCurrent,
   } = useDocs();
 
-  const { getFilesByDoc, uploadFileToDoc, getDocFiles } = useFiles();
+  const { getFilesByDoc, uploadFileToDoc, getDocFiles, removeDocFile, uploading: filesUploading } = useFiles();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState("saved");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [deletingFile, setDeletingFile] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false); // NEW: Track if document is loaded
 
   const saveTimeoutRef = useRef(null);
@@ -540,18 +541,42 @@ export default function DocEditorPage() {
   };
 
   /* ---------------- FILE UPLOAD ---------------- */
-  const handleUpload = (e) => {
+  const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !current) return;
 
-    uploadFileToDoc(current?.project_id, current?.id, file);
-
-    e.target.value = "";
+    setUploadProgress(true);
+    try {
+      await uploadFileToDoc(current?.project_id, current?.id, file);
+    } catch (err) {
+      console.error("Doc file upload failed:", err);
+    } finally {
+      setUploadProgress(false);
+      e.target.value = "";
+    }
   };
 
   /* ---------------- FILE DELETE ---------------- */
-  const handleDeleteFile = (fileId) => {
-    removeDocFile({ docId: current.id, fileId });
+  const handleDeleteFileClick = (file) => {
+    setFileToDelete(file);
+  };
+
+  const handleConfirmDeleteFile = async () => {
+    if (!current || !fileToDelete || deletingFile) return;
+
+    setDeletingFile(true);
+    try {
+      await removeDocFile({
+        projectId: current.project_id,
+        docId: current.id,
+        fileId: fileToDelete.id,
+      });
+      setFileToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete attachment:", err);
+    } finally {
+      setDeletingFile(false);
+    }
   };
 
   /* ---------------- DOCUMENT DELETE ---------------- */
@@ -748,14 +773,23 @@ export default function DocEditorPage() {
           <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Attachments</h3>
 
-            <label className="inline-flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors">
-              <Paperclip className="w-4 h-4" />
-              {uploading ? "Uploading..." : "Add File"}
+            <label className="inline-flex items-center gap-2 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors disabled:opacity-50">
+              {uploadProgress || filesUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Paperclip className="w-4 h-4" />
+                  Add File
+                </>
+              )}
               <input
                 type="file"
                 hidden
                 onChange={handleUpload}
-                disabled={uploading}
+                disabled={uploadProgress || filesUploading}
               />
             </label>
           </div>
@@ -799,7 +833,7 @@ export default function DocEditorPage() {
                       </a>
 
                       <button
-                        onClick={() => handleDeleteFile(f.id)}
+                        onClick={() => handleDeleteFileClick(f)}
                         className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -853,6 +887,68 @@ export default function DocEditorPage() {
                 {deleting ? "Deleting..." : "Delete Document"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Delete Confirmation Modal */}
+      {fileToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+          {/* Backdrop with blur effect */}
+          <div
+            className="absolute inset-0 bg-gray-900/20 backdrop-blur-sm"
+            onClick={() => !deletingFile && setFileToDelete(null)}
+          />
+
+          {/* Modal content */}
+          <div className="bg-white rounded-lg max-w-md w-full p-6 relative z-10 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Delete Attachment
+              </h3>
+            </div>
+
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete this file?
+            </p>
+            <p className="text-sm font-medium text-gray-900 bg-gray-50 p-3 rounded-lg mb-6 truncate">
+              {fileToDelete.file_name}
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setFileToDelete(null)}
+                disabled={deletingFile}
+                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteFile}
+                disabled={deletingFile}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {deletingFile && <Loader2 className="w-4 h-4 animate-spin" />}
+                {deletingFile ? "Deleting..." : "Delete File"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Progress Indicator */}
+      {uploadProgress && (
+        <div className="fixed bottom-6 right-6 bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex items-center gap-3 z-50">
+          <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">Uploading file...</p>
+            <p className="text-xs text-gray-500">Please wait</p>
           </div>
         </div>
       )}

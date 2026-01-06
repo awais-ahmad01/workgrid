@@ -106,10 +106,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { Paperclip, Trash2, Download, Loader2, FileText, Upload, AlertCircle, X } from 'lucide-react'
+import { Paperclip, Trash2, Download, Loader2, FileText, Upload, AlertCircle } from 'lucide-react'
 import { useFiles } from '@/lib/hooks/useFiles'
 import { useProjects } from '@/lib/hooks/useProjects'
+import FilesHeader from './header'
 
 export default function ProjectFilesPage() {
   const { activeProject } = useProjects()
@@ -125,6 +125,7 @@ export default function ProjectFilesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     if (activeProject?.id) {
@@ -133,6 +134,10 @@ export default function ProjectFilesPage() {
   }, [activeProject?.id])
 
   const files = getFilesByProject(activeProject?.id)
+
+  const filteredFiles = files.filter((file) =>
+    file.file_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0]
@@ -171,7 +176,7 @@ export default function ProjectFilesPage() {
 
   const getFileIcon = (fileName) => {
     const ext = fileName.split('.').pop()?.toLowerCase()
-    const iconClass = "w-5 h-5"
+    const iconClass = 'w-5 h-5'
     
     if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
       return <FileText className={`${iconClass} text-blue-600`} />
@@ -204,57 +209,33 @@ export default function ProjectFilesPage() {
     })
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Project Files</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Upload and manage files for {activeProject?.name || 'your project'}
-              </p>
-            </div>
-            
-            <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {uploadProgress ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4" />
-                  Upload File
-                </>
-              )}
-              <input 
-                type="file" 
-                hidden 
-                onChange={handleUpload} 
-                disabled={uploading || uploadProgress || !activeProject?.id}
-              />
-            </label>
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-10">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+            <span>Loading files...</span>
           </div>
         </div>
+      )
+    }
 
-        {/* Files List */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+    if (filteredFiles.length === 0) {
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Paperclip className="w-8 h-8 text-gray-400" />
           </div>
-        ) : files.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Paperclip className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No files uploaded yet
-            </h3>
-            <p className="text-gray-500 mb-6">
-              Upload your first file to get started
-            </p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {searchQuery ? 'No files match your search' : 'No files uploaded yet'}
+          </h3>
+          <p className="text-gray-500 mb-6">
+            {searchQuery
+              ? 'Try adjusting your search'
+              : 'Upload your first file to get started'}
+          </p>
+          {!searchQuery && (
             <label className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer">
               <Upload className="w-4 h-4" />
               Upload File
@@ -265,93 +246,135 @@ export default function ProjectFilesPage() {
                 disabled={uploading || uploadProgress || !activeProject?.id}
               />
             </label>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      File Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Size
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Uploaded
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {files.map((file) => (
-                    <tr key={file.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                            {getFileIcon(file.file_name)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 truncate max-w-md">
-                              {file.file_name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {file.mime_type || 'Unknown type'}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
-                          {formatFileSize(file.size)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-500">
-                          {formatDate(file.created_at)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <a
-                            href={`https://ahxjpxkhkebnjreojakc.supabase.co/storage/v1/object/public/project-files/${file.file_path}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                            Download
-                          </a>
-                          <button
-                            onClick={() => setDeleteConfirm(file)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
+      )
+    }
 
-        {/* Upload Progress Indicator */}
-        {uploadProgress && (
-          <div className="fixed bottom-6 right-6 bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex items-center gap-3 z-50">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
-            <div>
-              <p className="text-sm font-medium text-gray-900">Uploading file...</p>
-              <p className="text-xs text-gray-500">Please wait</p>
-            </div>
-          </div>
-        )}
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  File Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Size
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Uploaded
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredFiles.map((file) => (
+                <tr key={file.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        {getFileIcon(file.file_name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate max-w-md">
+                          {file.file_name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {file.mime_type || 'Unknown type'}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm text-gray-900">
+                      {formatFileSize(file.size)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm text-gray-500">
+                      {formatDate(file.created_at)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <a
+                        href={`https://ahxjpxkhkebnjreojakc.supabase.co/storage/v1/object/public/project-files/${file.file_path}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </a>
+                      <button
+                        onClick={() => setDeleteConfirm(file)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+    )
+  }
+
+  const uploadButton = (
+    <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+      {uploadProgress ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Uploading...
+        </>
+      ) : (
+        <>
+          <Upload className="w-4 h-4" />
+          Upload File
+        </>
+      )}
+      <input 
+        type="file" 
+        hidden 
+        onChange={handleUpload} 
+        disabled={uploading || uploadProgress || !activeProject?.id}
+      />
+    </label>
+  )
+
+  return (
+    <div className="flex flex-col gap-6">
+      <FilesHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        rightSlot={uploadButton}
+      />
+
+      <div className="px-6 md:px-10 lg:px-12 pb-8 space-y-4">
+        <p className="text-sm text-gray-600">
+          Upload and manage files for {activeProject?.name || 'your project'}
+        </p>
+
+        {renderContent()}
+      </div>
+
+      {/* Upload Progress Indicator */}
+      {uploadProgress && (
+        <div className="fixed bottom-6 right-6 bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex items-center gap-3 z-50">
+          <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">Uploading file...</p>
+            <p className="text-xs text-gray-500">Please wait</p>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

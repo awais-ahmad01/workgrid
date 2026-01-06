@@ -130,12 +130,13 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { Loader2, Pin, Trash2, Plus, Megaphone, CheckCircle, Circle, AlertCircle, X } from 'lucide-react'
+import { Loader2, Pin, Trash2, Megaphone, CheckCircle, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useAnnouncements } from '@/lib/hooks/useAnnouncements'
 import { supabaseBrowser } from '@/lib/supabaseClient'
 import CreateAnnouncementModal from '../../components/modals/CreateAnnouncementModal'
 import { useProjects } from '@/lib/hooks/useProjects'
+import AnnouncementsHeader from './header'
 
 export default function AnnouncementsPage() {
   const { user } = useAuth()
@@ -143,6 +144,9 @@ export default function AnnouncementsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [initialLoad, setInitialLoad] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [category, setCategory] = useState('ALL')
+  const [showFilters, setShowFilters] = useState(false)
 
   const { list: projects, loading: projectsLoading } = useProjects()
   
@@ -166,7 +170,7 @@ export default function AnnouncementsPage() {
       fetchAnnouncements(projectIds)
       setInitialLoad(false)
     }
-  }, [projectIds.length, initialLoad])
+  }, [projectIds.length, initialLoad, fetchAnnouncements])
 
   /* Realtime */
   useEffect(() => {
@@ -182,7 +186,7 @@ export default function AnnouncementsPage() {
       .subscribe()
 
     return () => supabaseBrowser.removeChannel(channel)
-  }, [])
+  }, [addAnnouncementRealtime])
 
   const canCreate =
     ['SUPER_ADMIN', 'ADMIN', 'HR', 'TEAM_LEAD'].includes(user?.role)
@@ -243,26 +247,38 @@ export default function AnnouncementsPage() {
     })
   }
 
+  // Filter announcements by category and search
+  const filteredAnnouncements = announcements.filter((a) => {
+    const matchesCategory =
+      category === 'ALL' ? true : a.category === category
+
+    const matchesSearch =
+      !searchQuery ||
+      a.title?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    return matchesCategory && matchesSearch
+  })
+
   // Separate pinned and unpinned announcements
-  const pinnedAnnouncements = announcements.filter(a => a.is_pinned)
-  const unpinnedAnnouncements = announcements.filter(a => !a.is_pinned)
+  const pinnedAnnouncements = filteredAnnouncements.filter(a => a.is_pinned)
+  const unpinnedAnnouncements = filteredAnnouncements.filter(a => !a.is_pinned)
 
-  // Show loading only on initial load or when projects are loading
-  if ((loading && initialLoad) || projectsLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-sm text-gray-500">Loading announcements...</p>
+  const renderContent = () => {
+    // Loading state – independent, consistent with other sections
+    if (loading || projectsLoading) {
+      return (
+        <div className="flex items-center justify-center py-10">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+            <span>Loading announcements...</span>
+          </div>
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6 max-w-md w-full">
+    if (error) {
+      return (
+        <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6 max-w-md">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
               <AlertCircle className="w-5 h-5 text-red-600" />
@@ -283,108 +299,104 @@ export default function AnnouncementsPage() {
             Try Again
           </button>
         </div>
+      )
+    }
+
+    if (filteredAnnouncements.length === 0) {
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Megaphone className="w-8 h-8 text-indigo-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {searchQuery || category !== 'ALL'
+              ? 'No announcements match your filters'
+              : 'No announcements yet'}
+          </h3>
+          <p className="text-gray-500 mb-6">
+            {searchQuery || category !== 'ALL'
+              ? 'Try adjusting your search or category'
+              : canCreate
+                ? 'Create your first announcement to get started'
+                : 'Check back later for updates'}
+          </p>
+          {canCreate && !searchQuery && category === 'ALL' && (
+            <button
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Create Announcement
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Pinned Announcements */}
+        {pinnedAnnouncements.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Pin className="w-4 h-4 text-indigo-600" />
+              Pinned Announcements
+            </div>
+            {pinnedAnnouncements.map(announcement => (
+              <AnnouncementCard
+                key={announcement.id}
+                announcement={announcement}
+                canCreate={canCreate}
+                onMarkAsRead={handleMarkAsRead}
+                onTogglePin={handleTogglePin}
+                onDelete={handleDeleteClick}
+                getCategoryColor={getCategoryColor}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Regular Announcements */}
+        {unpinnedAnnouncements.length > 0 && (
+          <div className="space-y-4">
+            {pinnedAnnouncements.length > 0 && (
+              <div className="text-sm font-medium text-gray-700">
+                Recent Announcements
+              </div>
+            )}
+            {unpinnedAnnouncements.map(announcement => (
+              <AnnouncementCard
+                key={announcement.id}
+                announcement={announcement}
+                canCreate={canCreate}
+                onMarkAsRead={handleMarkAsRead}
+                onTogglePin={handleTogglePin}
+                onDelete={handleDeleteClick}
+                getCategoryColor={getCategoryColor}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Announcements</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Stay updated with the latest company news and updates
-              </p>
-            </div>
-            
-            {canCreate && (
-              <button
-                onClick={() => setOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                New Announcement
-              </button>
-            )}
-          </div>
-        </div>
+    <div className="flex flex-col gap-6">
+      <AnnouncementsHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        category={category}
+        onCategoryChange={setCategory}
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((prev) => !prev)}
+        canCreate={canCreate}
+        onCreateClick={() => setOpen(true)}
+      />
 
-        {/* Empty State */}
-        {announcements.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Megaphone className="w-8 h-8 text-indigo-600" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No announcements yet
-            </h3>
-            <p className="text-gray-500 mb-6">
-              {canCreate 
-                ? "Create your first announcement to get started"
-                : "Check back later for updates"
-              }
-            </p>
-            {canCreate && (
-              <button
-                onClick={() => setOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create Announcement
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Pinned Announcements */}
-            {pinnedAnnouncements.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Pin className="w-4 h-4 text-indigo-600" />
-                  Pinned Announcements
-                </div>
-                {pinnedAnnouncements.map(announcement => (
-                  <AnnouncementCard
-                    key={announcement.id}
-                    announcement={announcement}
-                    canCreate={canCreate}
-                    onMarkAsRead={handleMarkAsRead}
-                    onTogglePin={handleTogglePin}
-                    onDelete={handleDeleteClick}
-                    getCategoryColor={getCategoryColor}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Regular Announcements */}
-            {unpinnedAnnouncements.length > 0 && (
-              <div className="space-y-4">
-                {pinnedAnnouncements.length > 0 && (
-                  <div className="text-sm font-medium text-gray-700">
-                    Recent Announcements
-                  </div>
-                )}
-                {unpinnedAnnouncements.map(announcement => (
-                  <AnnouncementCard
-                    key={announcement.id}
-                    announcement={announcement}
-                    canCreate={canCreate}
-                    onMarkAsRead={handleMarkAsRead}
-                    onTogglePin={handleTogglePin}
-                    onDelete={handleDeleteClick}
-                    getCategoryColor={getCategoryColor}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+      <div className="px-6 md:px-10 lg:px-12 pb-8">
+        {renderContent()}
       </div>
 
       {/* Create Modal */}

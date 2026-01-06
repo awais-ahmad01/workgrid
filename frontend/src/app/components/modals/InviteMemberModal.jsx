@@ -120,7 +120,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Loader2, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 
 const ROLES = [
@@ -133,12 +133,13 @@ const ROLES = [
 ]
 
 export default function InviteMemberModal({ open, onClose }) {
-  const { sendInvite, loading } = useAuth()
+  const { sendInvite } = useAuth()
 
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('TEAM_LEAD')
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [loading, setLoading] = useState(false) // Local loading state
 
   if (!open) return null
 
@@ -146,20 +147,40 @@ export default function InviteMemberModal({ open, onClose }) {
     e.preventDefault()
     setError(null)
     setSuccess(false)
+    setLoading(true)
 
-    const res = await sendInvite(email, role)
+    try {
+      const res = await sendInvite(email, role)
 
-    if (res.success) {
-      setSuccess(true)
+      if (res.success) {
+        setSuccess(true)
+        setEmail('')
+        setRole('TEAM_LEAD')
+        // Auto-close after 3 seconds on success
+        setTimeout(() => {
+          setSuccess(false)
+          onClose()
+        }, 3000)
+      } else {
+        // Extract user-friendly error message
+        const errorMessage = res.error || 'Failed to send invitation. Please try again.'
+        setError(errorMessage)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+      console.error('Invite error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    if (!loading) {
+      setError(null)
+      setSuccess(false)
       setEmail('')
       setRole('TEAM_LEAD')
-      // Auto-close after 2 seconds on success
-      setTimeout(() => {
-        setSuccess(false)
-        onClose()
-      }, 2000)
-    } else {
-      setError(res.error)
+      onClose()
     }
   }
 
@@ -170,8 +191,9 @@ export default function InviteMemberModal({ open, onClose }) {
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Invite Team Member</h2>
           <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            onClick={handleClose}
+            disabled={loading}
+            className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -180,14 +202,21 @@ export default function InviteMemberModal({ open, onClose }) {
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {success && (
-            <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm">
-              Invitation sent successfully!
+            <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-lg flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-sm mb-1">Invitation sent successfully!</p>
+                <p className="text-xs text-green-700">
+                  An invitation email has been sent to <strong>{email}</strong>. They will receive instructions to join your workspace.
+                </p>
+              </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg">
+              <p className="font-medium text-sm mb-1">Unable to send invitation</p>
+              <p className="text-sm">{error}</p>
             </div>
           )}
 
@@ -225,17 +254,30 @@ export default function InviteMemberModal({ open, onClose }) {
           <div className="pt-4 flex justify-end gap-3">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={handleClose}
+              disabled={loading}
+              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={loading || success}
+              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
             >
-              {loading ? 'Sending...' : 'Send Invite'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : success ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Sent
+                </>
+              ) : (
+                'Send Invite'
+              )}
             </button>
           </div>
         </form>

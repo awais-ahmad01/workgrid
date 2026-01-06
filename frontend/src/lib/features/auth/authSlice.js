@@ -274,15 +274,17 @@ const authSlice = createSlice({
 
 
       // SEND INVITE
+      // Note: Don't set global loading state for sendInvite to avoid layout loader
+      // The modal uses its own local loading state
 .addCase(sendInvite.pending, (state) => {
-  state.loading = true;
+  // Don't set state.loading = true to prevent layout loader
   state.error = null;
 })
 .addCase(sendInvite.fulfilled, (state) => {
-  state.loading = false;
+  // Don't modify state.loading
 })
 .addCase(sendInvite.rejected, (state, action) => {
-  state.loading = false;
+  // Don't modify state.loading
   state.error = action.payload;
 })
 

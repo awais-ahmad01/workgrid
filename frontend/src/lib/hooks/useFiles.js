@@ -108,8 +108,9 @@ import {
   uploadProjectFile,
   uploadTaskFile,
   deleteFile,
-   listDocFiles,
+  listDocFiles,
   uploadDocFile,
+  deleteDocFile,
 } from '../features/files/filesSlice'
 
 export function useFiles() {
@@ -142,20 +143,19 @@ export function useFiles() {
     console.log("getDocFiles called with:", {docId, projectId})  ||
   dispatch(listDocFiles({ docId, projectId }))
 
-const uploadFileToDoc = (projectId, docId, file) =>
-  // console.log("uploadFileToDoc called with:", {projectId, docId, file}) 
-  dispatch(uploadDocFile({ projectId, docId, file }))
+  const uploadFileToDoc = (projectId, docId, file) =>
+    dispatch(uploadDocFile({ projectId, docId, file }))
 
-const getFilesByDoc = (docId) =>
-  docFiles[docId] || []
+  const getFilesByDoc = (docId) =>
+    docFiles[docId] || []
 
 
   /* -------- DELETE -------- */
-  const removeFile = ({
-    projectId,
-    taskId,
-    fileId
-  }) => dispatch(deleteFile({ projectId, taskId, fileId }))
+  const removeFile = ({ projectId, taskId, fileId }) =>
+    dispatch(deleteFile({ projectId, taskId, fileId }))
+
+  const removeDocFile = ({ projectId, docId, fileId }) =>
+    dispatch(deleteDocFile({ projectId, docId, fileId }))
   /* -------- SELECTORS -------- */
   const getFilesByProject = (projectId) =>
     projectFiles[projectId] || []
@@ -173,7 +173,6 @@ const getFilesByDoc = (docId) =>
     getFilesByProject,
     getFilesByTask,
     getFilesByDoc, 
- 
 
     // actions
     getProjectFiles,
@@ -181,9 +180,9 @@ const getFilesByDoc = (docId) =>
     getDocFiles,
     uploadFileToProject,
     uploadFileToTask,
-       uploadFileToDoc, 
-       
-       removeFile
+    uploadFileToDoc, 
+    removeFile,
+    removeDocFile,
     
   }
 }

@@ -354,7 +354,7 @@ export default function Sidebar() {
       {/* Footer */}
       {!isCollapsed && (
         <div className="px-5 py-4 border-t border-gray-100">
-          <div className="text-xs text-gray-400">© 2024 WorkGrid</div>
+          <div className="text-xs text-gray-400">© 2026 WorkGrid</div>
         </div>
       )}
     </>
